@@ -19,39 +19,51 @@ class Direction:
 
 
 class Environment:
-    MAX_ITERATIONS = 10_000
-    MAX_SIMULATION_ITERATIONS = 500
+    # All of our constants, prone to change.
+    MAX_ITERATIONS = 10_000  # Amount of simulations until termination.
+    MAX_SIMULATION_ITERATIONS = 500  # Amount of actions within one simulation. Actions = Q-table updates.
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
-    EPSILON_LOW = .6
-    EPSILON_HIGH = .99
 
-    action_space = [0, 1, 2, 3, 4]
-    collision_boundary = .1
+    EPSILON_LOW = .6  # Start epsilon value. This gradually increases.
+    EPSILON_HIGH = .99  # End epsilon value
+    EPSILON_INCREASE = .01  # How much should we increase the epsilon value with, each time?
+
+    COLLISION_THRESHOLD = 100  # After how many collision actions should we reset the environment? Prevents rob getting stuck.
+
+    action_space = [0, 1, 2, 3, 4]  # All of our available actions. Find definitions in the Direction class.
+    collision_boundary = .1  # The boundary that determines collision or not.
     collision_counter, iteration_counter, epsilon_counter = 0, 0, 0
-    epsilon_increase = int((MAX_ITERATIONS // (EPSILON_HIGH - EPSILON_LOW) * 100) / 10_000)
+
+    # The epsilon_increase determines when the epsilon should be increased. This happens gradually from EPSILON_LOW
+    # to EPSILON_HIGH during the amount of allowed iterations. So when MAX_ITERATIONS reaches its limit, so does
+    # the epsilon value.
+    epsilon_increase = int(((MAX_ITERATIONS * MAX_SIMULATION_ITERATIONS) // (EPSILON_HIGH - EPSILON_LOW) * 100) / 10_000)
 
     def __init__(self):
         signal.signal(signal.SIGINT, self.terminate_program)
         self.rob = robobo.SimulationRobobo().connect(address='192.168.2.25', port=19997)
         self.q_table = self.initialize_q_table()
-        self.discrete_os_win_size = []
 
     def start_environment(self):
         for i in range(1, self.MAX_ITERATIONS):
             print(f"Starting simulation nr. {i}")
 
             self.rob.play_simulation()
+            # A simulation runs until valid_environment returns False.
             while self.valid_environment():
-                curr_state = self.handle_state()
+                curr_state = self.handle_state()  # Check in what state rob is, return tuple e.g. (0, 0, 0, 1, 0)
+
+                # Do we perform random action (due to epsilon < 1) or our best possible action?
                 if random.random() < (1 - self.EPSILON_LOW):
                     best_action = random.choice(self.action_space)
                 else:
                     best_action = np.argmax(self.q_table[curr_state])
 
+                # Given our selected action (whether best or random), perform this action and update the Q-table.
                 self.update_q_table(best_action, curr_state)
-                self.change_epsilon()
-                self.iteration_counter += 1
+                self.change_epsilon()  # Check if we should increase epsilon or not.
+                self.iteration_counter += 1  # Keep track of how many actions this simulation does.
             else:
                 print(f"Environment is not valid anymore, starting new environment")
                 self.iteration_counter = 0
@@ -60,10 +72,12 @@ class Environment:
     @staticmethod
     def terminate_program():
         print("Ctrl-C received, terminating program")
+        # TODO Here we should also save current results (Q-table) in pickle format.
         sys.exit(1)
 
     def valid_environment(self):
-        if self.collision_counter > 100:
+        # This function checks whether the current simulation can continue or not, depending on several criteria.
+        if self.collision_counter > self.COLLISION_THRESHOLD:
             return False
         if self.iteration_counter >= self.MAX_SIMULATION_ITERATIONS:
             return False
@@ -71,9 +85,11 @@ class Environment:
         return True
 
     def change_epsilon(self):
+        # This function changes the epsilon value if needed. Only does so if we did x amount of iterations, and the
+        # current epsilon value is smaller than the epsilon limit (EPSILON_HIGH).
         if self.epsilon_counter == self.epsilon_increase:
             if self.EPSILON_LOW < self.EPSILON_HIGH:
-                self.EPSILON_LOW += 0.01
+                self.EPSILON_LOW += self.EPSILON_INCREASE
                 print(f"Increasing epsilon to {self.EPSILON_LOW}")
                 self.epsilon_counter = 0
         else:
@@ -83,13 +99,14 @@ class Environment:
         # Initialize Q-table for states * action pairs with default values (0).
         # Since observation space is very large, we need to trim it down (bucketing) to only a select amount of
         # possible states, e.g. 4 for each sensor (4^8 = 65k). Or: use less sensors (no rear sensors for task 1).
+        # The size (5, 5, 5, 5, 5) denotes each sensor, with its amount of possible states (see func handle_state).
         q_table = np.random.uniform(low=0, high=0, size=([5, 5, 5, 5, 5] + [len(self.action_space)]))
-        q_table[(0, 0, 0, 0, 0)][2] = 1  # Initialize the table with forward move.
+        # q_table[(0, 0, 0, 0, 0)][2] = 1  # Initialize the table with a forward move. Most likely not necessary.
         return np.round(q_table)
 
     def handle_state(self):
         # This function should return the values with which we can index our q_table, in tuple format.
-        # So it should take the last 5 sensor inputs (current state), transform each of them into a bucket where
+        # So, it should take the last 5 sensor inputs (current state), transform each of them into a bucket where
         # the bucket size is already determined by the shape of the q_table.
         sensor_values = np.log(np.array(self.rob.read_irs())[3:]) / 10
         sensor_values = np.where(sensor_values == -np.inf, 0, sensor_values)  # Remove the infinite values.
@@ -100,23 +117,26 @@ class Environment:
         for sensor_value in sensor_values:
             if 1 >= sensor_value >= 0.8:  # No need for action, moving forward is best.
                 indices.append(0)
-            elif 0.8 > sensor_value >= 0.6:  # No need for action, moving forward is best.
+            elif 0.8 > sensor_value >= 0.6:
                 indices.append(1)
-            elif 0.6 > sensor_value >= 0.4:  # No need for action, moving forward is best.
+            elif 0.6 > sensor_value >= 0.4:  # We see an object, but not really close yet.
                 indices.append(2)
-            elif 0.4 > sensor_value >= 0.2:  # No need for action, moving forward is best.
+            elif 0.4 > sensor_value >= 0.2:
                 indices.append(3)
-            elif 0.2 > sensor_value >= 0:  # No need for action, moving forward is best.
+            elif 0.2 > sensor_value >= 0:  # Close proximity.
                 indices.append(4)
 
+        # Return the values in tuple format, with which we can index our Q-table. This tuple is a representation
+        # of the current state our robot is in (i.e. what does the robot see with its sensors).
         return tuple(indices)
 
     def handle_action(self, action):
         # This function should accept an action (0, 1, 2...) and move the robot accordingly (left, right, forward).
-        # Return: new_state and reward
+        # It returns two things: new_state, which is the state (in tuple format) after this action has been performed.
+        # and reward, which is the reward from this action.
         reward = -1
 
-        # Keep track of collision. If it reaches its threshold, reset environment.
+        # Keep track of collision.
         collision = self.collision()
 
         if action == 0:
@@ -159,7 +179,9 @@ class Environment:
         return self.handle_state(), reward  # New_state, reward
 
     def collision(self):
-        # If one of the (absolute) sensor values < threshold, return True.
+        # This function checks whether rob is close to something or not. If it's close (about to collide), return True
+        # It also keeps track of the collision counter. If this counter exceeds its threshold (COLLISION_THRESHOLD)
+        # then the environment should reset (to avoid rob getting stuck).
         sensor_values = np.array(self.rob.read_irs())[3:]
         collision = any([0 < i < self.collision_boundary for i in sensor_values])
 
@@ -171,15 +193,26 @@ class Environment:
             return False
 
     def update_q_table(self, best_action, curr_state):
+        # This function updates the Q-table accordingly to the current state of rob.
+        # First, we determine the new state we end in if we would play our current best action, given our current state.
         new_state, reward = self.handle_action(best_action)
+
+        # Then we calculate the reward we would get in this new state.
         max_future_q = np.amax(self.q_table[new_state])
+
+        # Check what Q-value our current action has.
         current_q = self.q_table[curr_state][best_action]
 
         # Calculate the new Q-value with the common formula
-        new_q = (1 - self.LEARNING_RATE) * current_q + self.LEARNING_RATE * (
-                reward + self.DISCOUNT_FACTOR * max_future_q)
+        new_q = (1 - self.LEARNING_RATE) * current_q + self.LEARNING_RATE * (reward + self.DISCOUNT_FACTOR * max_future_q)
 
-        self.q_table[curr_state][best_action] = new_q  # And update the value
+        print(f"Current state: {curr_state} with Q-values: {self.q_table[curr_state]}. \n"
+              f"If we play our best action {best_action}, we end up in new state: {new_state} with Q-values: {self.q_table[new_state]}.\n"
+              f"We now receive reward {reward}, the Q-value for current state is updates from {current_q} to {new_q}\n"
+              f"The max future reward is: {max_future_q}\n")
+
+        # And lastly, update the value in the Q-table.
+        self.q_table[curr_state][best_action] = new_q
 
 
 def main():
