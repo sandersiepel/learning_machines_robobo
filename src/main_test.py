@@ -13,6 +13,7 @@ import pprint
 # New comment to test
 
 class Direction:
+    #testtest
     LEFT = (-25, 25, 300)  # Action: 0
     RIGHT = (25, -25, 300)  # Action: 1
     FORWARD = (25, 25, 300)  # Action: 2
