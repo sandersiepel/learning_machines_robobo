@@ -10,10 +10,8 @@ import pickle
 import random
 import pprint
 
-# New comment TEST 2
 
 class Direction:
-    #testtesttest
     LEFT = (-25, 25, 300)  # Action: 0
     RIGHT = (25, -25, 300)  # Action: 1
     FORWARD = (25, 25, 300)  # Action: 2
@@ -52,14 +50,8 @@ class Environment:
             self.q_table = self.read_q_table()
 
     def read_q_table(self):
-        "dit is een comment"
         with open('q_table', 'rb') as fp:
             q_table = pickle.load(fp)
-
-            # hier comment
-            # extra comment
-            # extra comment
-            print(3+5)
         return q_table
 
     def store_q_table(self):
