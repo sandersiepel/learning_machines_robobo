@@ -23,11 +23,12 @@ class Direction:
 
 class Environment:
     # All of our constants, prone to change.
-    MAX_ITERATIONS = 5  # Amount of simulations until termination.
+    MAX_ITERATIONS = 10  # Amount of simulations until termination.
     MAX_SIMULATION_ITERATIONS = 100  # Amount of actions within one simulation. Actions = Q-table updates.
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
-    NEW_Q_TABLE = False  # True if we want to start new training, False if we want to use existing file.
+    NEW_Q_TABLE = True  # True if we want to start new training, False if we want to use existing file.
+    filename = "reward_data40-250.pickle"  # Name of the q-table in case we LOAD the data (for testing).
 
     EPSILON_LOW = .6  # Start epsilon value. This gradually increases.
     EPSILON_HIGH = .99  # End epsilon value
@@ -46,24 +47,23 @@ class Environment:
 
     def __init__(self):
         signal.signal(signal.SIGINT, self.terminate_program)
-        self.rob = robobo.SimulationRobobo().connect(address='192.168.1.3', port=19997)
+        self.rob = robobo.SimulationRobobo().connect(address='192.168.2.25', port=19997)
+        self.stats = Statistics(self.MAX_ITERATIONS, self.MAX_SIMULATION_ITERATIONS)
 
         # Start with either a new Q-table or load one
         if self.NEW_Q_TABLE:
             self.q_table = self.initialize_q_table()
         else:
-            self.q_table = self.read_q_table()
-
-        self.stats = Statistics(self.MAX_ITERATIONS, self.MAX_SIMULATION_ITERATIONS)
+            self.q_table = self.read_q_table(self.filename)
 
     @staticmethod
-    def read_q_table():
-        with open('q_table', 'rb') as fp:
+    def read_q_table(filename):
+        with open(filename, 'rb') as fp:
             q_table = pickle.load(fp)
         return q_table
 
     def store_q_table(self):
-        with open('q_table', 'wb') as fp:
+        with open(f"q_table_{self.MAX_ITERATIONS}_{self.MAX_SIMULATION_ITERATIONS}", 'wb') as fp:
             pickle.dump(self.q_table, fp)
 
     def start_environment(self):
@@ -84,7 +84,6 @@ class Environment:
                 # Given our selected action (whether best or random), perform this action and update the Q-table.
                 reward = self.update_q_table(best_action, curr_state)
                 self.stats.add_reward(i, self.iteration_counter, reward)
-
                 self.change_epsilon()  # Check if we should increase epsilon or not.
                 self.iteration_counter += 1  # Keep track of how many actions this simulation does.
             else:
@@ -125,7 +124,6 @@ class Environment:
         # possible states, e.g. 4 for each sensor (4^8 = 65k). Or: use less sensors (no rear sensors for task 1).
         # The size (5, 5, 5, 5, 5) denotes each sensor, with its amount of possible states (see func handle_state).
         q_table = np.random.uniform(low=0, high=0, size=([5, 5, 5, 5, 5] + [len(self.action_space)]))
-        # q_table[(0, 0, 0, 0, 0)][2] = 1  # Initialize the table with a forward move. Most likely not necessary.
         return np.round(q_table)
 
     def handle_state(self):
@@ -186,10 +184,7 @@ class Environment:
         # This function checks whether rob is close to something or not. If it's close (about to collide), return True
         # It also keeps track of the collision counter. If this counter exceeds its threshold (COLLISION_THRESHOLD)
         # then the environment should reset (to avoid rob getting stuck).
-        try:
-            sensor_values = np.array(self.rob.read_irs())[3:]
-        except:
-            sensor_values = [0,0,0,0,0]
+        sensor_values = np.array(self.rob.read_irs())[3:]
         collision = any([0 < i < self.collision_boundary for i in sensor_values])
 
         if collision:
@@ -227,7 +222,7 @@ class Environment:
 def main():
     env = Environment()
     env.start_environment()
-    env.stats.store_data()
+    env.stats.save_rewards()
 
 
 if __name__ == "__main__":
