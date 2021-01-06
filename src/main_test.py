@@ -6,6 +6,7 @@ import robobo
 import sys
 import signal
 import prey
+import pickle
 import random
 import pprint
 
@@ -40,10 +41,22 @@ class Environment:
     # the epsilon value.
     epsilon_increase = int(((MAX_ITERATIONS * MAX_SIMULATION_ITERATIONS) // (EPSILON_HIGH - EPSILON_LOW) * 100) / 10_000)
 
-    def __init__(self):
+    def __init__(self, new_QTable):
         signal.signal(signal.SIGINT, self.terminate_program)
-        self.rob = robobo.SimulationRobobo().connect(address='192.168.2.25', port=19997)
-        self.q_table = self.initialize_q_table()
+        self.rob = robobo.SimulationRobobo().connect(address='192.168.1.3', port=19997)
+        if new_QTable:
+            self.q_table = self.initialize_q_table()
+        else:
+            self.q_table = self.read_q_table()
+
+    def store_q_table(self):
+        with open('q_table', 'wb') as fp:
+            pickle.dump(self.q_table, fp)
+
+    def read_q_table(self):
+        with open('q_table', 'rb') as fp:
+            q_table = pickle.load(fp)
+        return q_table
 
     def start_environment(self):
         for i in range(1, self.MAX_ITERATIONS):
@@ -72,7 +85,7 @@ class Environment:
     @staticmethod
     def terminate_program():
         print("Ctrl-C received, terminating program")
-        # TODO Here we should also save current results (Q-table) in pickle format.
+        Environment.store_q_table()
         sys.exit(1)
 
     def valid_environment(self):
@@ -216,7 +229,7 @@ class Environment:
 
 
 def main():
-    env = Environment()
+    env = Environment(True)
     env.start_environment()
 
 
