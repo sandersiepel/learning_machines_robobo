@@ -49,14 +49,14 @@ class Environment:
         else:
             self.q_table = self.read_q_table()
 
-    def store_q_table(self):
-        with open('q_table', 'wb') as fp:
-            pickle.dump(self.q_table, fp)
-
     def read_q_table(self):
         with open('q_table', 'rb') as fp:
             q_table = pickle.load(fp)
         return q_table
+
+    def store_q_table(self):
+        with open('q_table', 'wb') as fp:
+            pickle.dump(self.q_table, fp)
 
     def start_environment(self):
         for i in range(1, self.MAX_ITERATIONS):
@@ -82,10 +82,9 @@ class Environment:
                 self.iteration_counter = 0
                 self.rob.stop_world()
 
-    @staticmethod
-    def terminate_program():
+    def terminate_program(self, test1, test2):
         print("Ctrl-C received, terminating program")
-        Environment.store_q_table()
+        self.store_q_table()
         sys.exit(1)
 
     def valid_environment(self):
