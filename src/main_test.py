@@ -132,10 +132,7 @@ class Environment:
         # This function should return the values with which we can index our q_table, in tuple format.
         # So, it should take the last 5 sensor inputs (current state), transform each of them into a bucket where
         # the bucket size is already determined by the shape of the q_table.
-        try:
-            sensor_values = np.log(np.array(self.rob.read_irs())[3:]) / 10
-        except:
-            sensor_values = [0,0,0,0,0]
+        sensor_values = np.log(np.array(self.rob.read_irs())[3:]) / 10
         sensor_values = np.where(sensor_values == -np.inf, 0, sensor_values)  # Remove the infinite values.
         sensor_values = (sensor_values - -0.65) / 0.65  # Scales all variables between [0, 1] where 0 is close proximity.
 

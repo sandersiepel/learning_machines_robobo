@@ -34,6 +34,12 @@ class Statistics:
             avg_reward.append(np.mean(self.rewards[i]))
         return avg_reward
 
+    def get_total_reward(self):
+        sum_reward = []
+        for i in range(len(self.rewards)):
+            sum_reward.append(np.sum(self.rewards[i]))
+        return sum_reward
+
     def plot(self, data, y_label, x_label, titel):
         plt.plot(data)
         plt.ylabel(y_label)
