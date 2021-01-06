@@ -20,14 +20,26 @@ class Direction:
 
 
 class Statistics:
-    def __init__(self):
-        pass
+    def __init__(self, max_simulation, max_iteration):
+        self.rewards = np.random.uniform(low=0, high=0, size=(max_simulation, max_iteration))
+
+    def add_reward(self, simulation, iteration, reward):
+        self.rewards[simulation][iteration] = reward
+
+    def get_rewards(self):
+        return self.rewards
+
+    def get_average_reward(self):
+        avg_reward = []
+        for i in range(len(self.rewards)):
+            avg_reward.append(np.mean(self.rewards[i]))
+        return avg_reward
 
 
 class Environment:
     # All of our constants, prone to change.
-    MAX_ITERATIONS = 100  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 500  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_ITERATIONS = 5  # Amount of simulations until termination.
+    MAX_SIMULATION_ITERATIONS = 100  # Amount of actions within one simulation. Actions = Q-table updates.
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
     NEW_Q_TABLE = False  # True if we want to start new training, False if we want to use existing file.
@@ -47,15 +59,17 @@ class Environment:
     # the epsilon value.
     epsilon_increase = int(((MAX_ITERATIONS * MAX_SIMULATION_ITERATIONS) // (EPSILON_HIGH - EPSILON_LOW) * 100) / 10_000)
 
-    def __init__(self, stats):
+    def __init__(self):
         signal.signal(signal.SIGINT, self.terminate_program)
-        self.rob = robobo.SimulationRobobo().connect(address='192.168.2.25', port=19997)
+        self.rob = robobo.SimulationRobobo().connect(address='192.168.1.3', port=19997)
 
         # Start with either a new Q-table or load one
         if self.NEW_Q_TABLE:
             self.q_table = self.initialize_q_table()
         else:
             self.q_table = self.read_q_table()
+
+        self.stats = Statistics(self.MAX_ITERATIONS, self.MAX_SIMULATION_ITERATIONS)
 
     @staticmethod
     def read_q_table():
@@ -83,7 +97,9 @@ class Environment:
                     best_action = np.argmax(self.q_table[curr_state])
 
                 # Given our selected action (whether best or random), perform this action and update the Q-table.
-                self.update_q_table(best_action, curr_state)
+                reward = self.update_q_table(best_action, curr_state)
+                self.stats.add_reward(i, self.iteration_counter, reward)
+
                 self.change_epsilon()  # Check if we should increase epsilon or not.
                 self.iteration_counter += 1  # Keep track of how many actions this simulation does.
             else:
@@ -131,7 +147,10 @@ class Environment:
         # This function should return the values with which we can index our q_table, in tuple format.
         # So, it should take the last 5 sensor inputs (current state), transform each of them into a bucket where
         # the bucket size is already determined by the shape of the q_table.
-        sensor_values = np.log(np.array(self.rob.read_irs())[3:]) / 10
+        try:
+            sensor_values = np.log(np.array(self.rob.read_irs())[3:]) / 10
+        except:
+            sensor_values = [0,0,0,0,0]
         sensor_values = np.where(sensor_values == -np.inf, 0, sensor_values)  # Remove the infinite values.
         sensor_values = (sensor_values - -0.65) / 0.65  # Scales all variables between [0, 1] where 0 is close proximity.
 
@@ -185,7 +204,10 @@ class Environment:
         # This function checks whether rob is close to something or not. If it's close (about to collide), return True
         # It also keeps track of the collision counter. If this counter exceeds its threshold (COLLISION_THRESHOLD)
         # then the environment should reset (to avoid rob getting stuck).
-        sensor_values = np.array(self.rob.read_irs())[3:]
+        try:
+            sensor_values = np.array(self.rob.read_irs())[3:]
+        except:
+            sensor_values = [0,0,0,0,0]
         collision = any([0 < i < self.collision_boundary for i in sensor_values])
 
         if collision:
@@ -217,11 +239,13 @@ class Environment:
         # And lastly, update the value in the Q-table.
         self.q_table[curr_state][best_action] = new_q
 
+        return reward
+
 
 def main():
     env = Environment()
-    stats = Statistics()
-    env.start_environment(stats)
+    env.start_environment()
+    print(env.stats.get_average_reward())
 
 
 if __name__ == "__main__":
