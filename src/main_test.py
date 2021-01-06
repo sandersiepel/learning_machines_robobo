@@ -8,7 +8,9 @@ import signal
 import prey
 import pickle
 import random
+import matplotlib.pyplot as plt
 import pprint
+from Statistics import Statistics
 
 
 class Direction:
@@ -17,23 +19,6 @@ class Direction:
     FORWARD = (25, 25, 300)  # Action: 2
     RRIGHT = (50, -50, 300)  # Action: 3
     LLEFT = (-50, 50, 300)  # Action: 4
-
-
-class Statistics:
-    def __init__(self, max_simulation, max_iteration):
-        self.rewards = np.random.uniform(low=0, high=0, size=(max_simulation, max_iteration))
-
-    def add_reward(self, simulation, iteration, reward):
-        self.rewards[simulation][iteration] = reward
-
-    def get_rewards(self):
-        return self.rewards
-
-    def get_average_reward(self):
-        avg_reward = []
-        for i in range(len(self.rewards)):
-            avg_reward.append(np.mean(self.rewards[i]))
-        return avg_reward
 
 
 class Environment:
@@ -245,7 +230,7 @@ class Environment:
 def main():
     env = Environment()
     env.start_environment()
-    print(env.stats.get_average_reward())
+    env.stats.store_data()
 
 
 if __name__ == "__main__":
