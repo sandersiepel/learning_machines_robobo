@@ -52,6 +52,8 @@ class Environment:
             self.q_table = self.read_q_table()
 
     def read_q_table(self):
+        "dit is een comment"
+        "TODO Dit moeten we ook nog doen"
         with open('q_table', 'rb') as fp:
             q_table = pickle.load(fp)
         return q_table
