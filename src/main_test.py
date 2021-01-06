@@ -54,6 +54,9 @@ class Environment:
     def read_q_table(self):
         with open('q_table', 'rb') as fp:
             q_table = pickle.load(fp)
+
+            # hier comment
+            print(3+5)
         return q_table
 
     def store_q_table(self):
