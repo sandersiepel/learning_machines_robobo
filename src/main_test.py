@@ -22,9 +22,10 @@ class Direction:
 class Environment:
     # All of our constants, prone to change.
     MAX_ITERATIONS = 10_000  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 500  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_SIMULATION_ITERATIONS = 100  # Amount of actions within one simulation. Actions = Q-table updates.
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
+    NEW_QTABLE = False
 
     EPSILON_LOW = .6  # Start epsilon value. This gradually increases.
     EPSILON_HIGH = .99  # End epsilon value
@@ -41,10 +42,10 @@ class Environment:
     # the epsilon value.
     epsilon_increase = int(((MAX_ITERATIONS * MAX_SIMULATION_ITERATIONS) // (EPSILON_HIGH - EPSILON_LOW) * 100) / 10_000)
 
-    def __init__(self, new_QTable):
+    def __init__(self):
         signal.signal(signal.SIGINT, self.terminate_program)
         self.rob = robobo.SimulationRobobo().connect(address='192.168.1.3', port=19997)
-        if new_QTable:
+        if self.NEW_QTABLE:
             self.q_table = self.initialize_q_table()
         else:
             self.q_table = self.read_q_table()
@@ -79,8 +80,10 @@ class Environment:
                 self.iteration_counter += 1  # Keep track of how many actions this simulation does.
             else:
                 print(f"Environment is not valid anymore, starting new environment")
+                self.store_q_table()
                 self.iteration_counter = 0
                 self.rob.stop_world()
+                self.rob.wait_for_ping()
 
     def terminate_program(self, test1, test2):
         print("Ctrl-C received, terminating program")
@@ -228,7 +231,7 @@ class Environment:
 
 
 def main():
-    env = Environment(True)
+    env = Environment()
     env.start_environment()
 
 
