@@ -10,7 +10,7 @@ import pickle
 import random
 import pprint
 
-# New comment to test
+# New comment TEST 2
 
 class Direction:
     LEFT = (-25, 25, 300)  # Action: 0
