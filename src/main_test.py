@@ -53,12 +53,12 @@ class Environment:
 
     def read_q_table(self):
         "dit is een comment"
-        "TODO Dit moeten we ook nog doen"
+        "TODO Dit moeten we ook nog doen blablabla"
         with open('q_table', 'rb') as fp:
             q_table = pickle.load(fp)
 
             # hier comment
-            print(3+5)
+            print(3+5+9)
         return q_table
 
     def store_q_table(self):
