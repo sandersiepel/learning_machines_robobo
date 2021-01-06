@@ -155,7 +155,6 @@ class SimulationRobobo(Robobo):
         self._vrep_set_joint_target_velocity(self._LeftMotor, left, vrep.simx_opmode_oneshot)
         self._vrep_set_joint_target_velocity(self._RightMotor, right, vrep.simx_opmode_oneshot)
         # self.wait_for_ping() #get_sim_time is already waiting for ping
-
         duration = millis #/ 1000.0
         # startTime = time.time()
         # while time.time() - startTime < duration:
