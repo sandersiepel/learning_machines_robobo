@@ -19,13 +19,18 @@ class Direction:
     LLEFT = (-50, 50, 300)  # Action: 4
 
 
+class Statistics:
+    def __init__(self):
+        pass
+
+
 class Environment:
     # All of our constants, prone to change.
-    MAX_ITERATIONS = 10_000  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 100  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_ITERATIONS = 100  # Amount of simulations until termination.
+    MAX_SIMULATION_ITERATIONS = 500  # Amount of actions within one simulation. Actions = Q-table updates.
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
-    NEW_QTABLE = False
+    NEW_Q_TABLE = False  # True if we want to start new training, False if we want to use existing file.
 
     EPSILON_LOW = .6  # Start epsilon value. This gradually increases.
     EPSILON_HIGH = .99  # End epsilon value
@@ -42,15 +47,18 @@ class Environment:
     # the epsilon value.
     epsilon_increase = int(((MAX_ITERATIONS * MAX_SIMULATION_ITERATIONS) // (EPSILON_HIGH - EPSILON_LOW) * 100) / 10_000)
 
-    def __init__(self):
+    def __init__(self, stats):
         signal.signal(signal.SIGINT, self.terminate_program)
-        self.rob = robobo.SimulationRobobo().connect(address='192.168.1.3', port=19997)
-        if self.NEW_QTABLE:
+        self.rob = robobo.SimulationRobobo().connect(address='192.168.2.25', port=19997)
+
+        # Start with either a new Q-table or load one
+        if self.NEW_Q_TABLE:
             self.q_table = self.initialize_q_table()
         else:
             self.q_table = self.read_q_table()
 
-    def read_q_table(self):
+    @staticmethod
+    def read_q_table():
         with open('q_table', 'rb') as fp:
             q_table = pickle.load(fp)
         return q_table
@@ -83,7 +91,7 @@ class Environment:
                 self.store_q_table()
                 self.iteration_counter = 0
                 self.rob.stop_world()
-                self.rob.wait_for_ping()
+                self.rob.wait_for_ping()  # Maybe we should wait for ping so we avoid errors.
 
     def terminate_program(self, test1, test2):
         print("Ctrl-C received, terminating program")
@@ -156,32 +164,12 @@ class Environment:
 
         if action == 0:
             left, right, duration = Direction.LEFT  # Left, action 0
-            # self.rob.move(-10, -10, 50)
-            # if collision:
-            #     reward += 1
-            # else:
-            #     reward -= 1
         elif action == 1:
             left, right, duration = Direction.RIGHT  # Right, action 1
-            # self.rob.move(-10, -10, 50)
-            # if collision:
-            #     reward += 1
-            # else:
-            #     reward -= 1
         elif action == 3:
             left, right, duration = Direction.RRIGHT  # Extreme right, action 3
-            # self.rob.move(-10, -10, 50)
-            # if collision:
-            #     reward += 1
-            # else:
-            #     reward -= 1
         elif action == 4:
             left, right, duration = Direction.LLEFT  # Extreme left, action 4
-            # self.rob.move(-10, -10, 50)
-            # if collision:
-            #     reward += 1
-            # else:
-            #     reward -= 1
         else:
             left, right, duration = Direction.FORWARD  # Forward, action 2
             if collision:
@@ -224,7 +212,7 @@ class Environment:
         print(f"Current state: {curr_state} with Q-values: {self.q_table[curr_state]}. \n"
               f"If we play our best action {best_action}, we end up in new state: {new_state} with Q-values: {self.q_table[new_state]}.\n"
               f"We now receive reward {reward}, the Q-value for current state is updates from {current_q} to {new_q}\n"
-              f"The max future reward is: {max_future_q}\n")
+              f"The max future reward is: {max_future_q}. Current epsilon value is: {self.EPSILON_LOW}\n")
 
         # And lastly, update the value in the Q-table.
         self.q_table[curr_state][best_action] = new_q
@@ -232,7 +220,8 @@ class Environment:
 
 def main():
     env = Environment()
-    env.start_environment()
+    stats = Statistics()
+    env.start_environment(stats)
 
 
 if __name__ == "__main__":
