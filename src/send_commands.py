@@ -73,7 +73,6 @@ def main():
     DISCOUNT_FACTOR = 0.95
 
     signal.signal(signal.SIGINT, terminate_program)
-
     # rob = robobo.HardwareRobobo(camera=True).connect(address="192.168.1.7")
     rob = robobo.SimulationRobobo().connect(address='192.168.1.3', port=19997)
 
