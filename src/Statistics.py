@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
+import os
 
 
 class Statistics:
@@ -19,13 +20,13 @@ class Statistics:
 
     def read_data(self):
         # This function is used to open a pickle file (the rewards from a training session) and load it.
-        with open(f'reward_data_{self.max_simulation}_{self.max_iteration}.pickle', 'rb') as fp:
+        with open(f'results/reward_data_{self.max_simulation}_{self.max_iteration}.pickle', 'rb') as fp:
             rewards = pickle.load(fp)
         self.rewards = rewards
 
     def save_rewards(self):
         # This function is used to save the accumulated rewards during training in a pickle file.
-        with open(f'reward_data_{self.max_simulation}_{self.max_iteration}.pickle', 'wb') as fp:
+        with open(f'src/results/reward_data_{self.max_simulation}_{self.max_iteration}.pickle', 'wb') as fp:
             pickle.dump(self.rewards, fp)
 
     def add_reward(self, simulation, iteration, reward):

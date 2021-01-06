@@ -23,7 +23,7 @@ class Direction:
 
 class Environment:
     # All of our constants, prone to change.
-    MAX_ITERATIONS = 10  # Amount of simulations until termination.
+    MAX_ITERATIONS = 5  # Amount of simulations until termination.
     MAX_SIMULATION_ITERATIONS = 100  # Amount of actions within one simulation. Actions = Q-table updates.
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
@@ -63,7 +63,7 @@ class Environment:
         return q_table
 
     def store_q_table(self):
-        with open(f"q_table_{self.MAX_ITERATIONS}_{self.MAX_SIMULATION_ITERATIONS}", 'wb') as fp:
+        with open(f"src/results/q_table_{self.MAX_ITERATIONS}_{self.MAX_SIMULATION_ITERATIONS}.pickle", 'wb') as fp:
             pickle.dump(self.q_table, fp)
 
     def start_environment(self):
