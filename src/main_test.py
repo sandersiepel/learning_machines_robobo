@@ -12,11 +12,12 @@ import matplotlib.pyplot as plt
 import pprint
 from Statistics import Statistics
 from datetime import datetime
+import seaborn as sns
 
 # If you want to test a Q-table (in pickle format), set MODE = "TEST". If you want to train a new/given Q-table,
 # set MODE = "train". If you use "train" you can select either NEW_Q_TABLE = True or False in the Environment class.
-MODE = "test"
-TEST_FILENAME = "src/results/q_table_500_250.pickle"
+MODE = "train"
+TEST_FILENAME = "src/results/q_table_500_250.pickle"  # Structure should be /src/results.
 
 
 class Direction:
@@ -29,8 +30,8 @@ class Direction:
 
 class Environment:
     # All of our constants, prone to change.
-    MAX_ITERATIONS = 500  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 250  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_ITERATIONS = 50  # Amount of simulations until termination.
+    MAX_SIMULATION_ITERATIONS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
     NEW_Q_TABLE = True  # True if we want to start new training, False if we want to use existing file.
@@ -52,6 +53,8 @@ class Environment:
     epsilon_increase = int(((MAX_ITERATIONS * MAX_SIMULATION_ITERATIONS) // (EPSILON_HIGH - EPSILON_LOW) * 100) / 10_000)
 
     def __init__(self):
+        self.state_distribution = []  # TODO remove these variables after investigation.
+        self.state_distribution2 = []  # TODO remove these variables after investigation.
         signal.signal(signal.SIGINT, self.terminate_program)
         self.rob = robobo.SimulationRobobo().connect(address='192.168.2.25', port=19997)
         self.stats = Statistics(self.MAX_ITERATIONS, self.MAX_SIMULATION_ITERATIONS)
@@ -73,14 +76,16 @@ class Environment:
             pickle.dump(self.q_table, fp)
 
     def start_environment(self):
-        for i in range(1, self.MAX_ITERATIONS):
+        for i in range(self.MAX_ITERATIONS):
             current_time = datetime.now().strftime("%H:%M:%S")
-            print(f"Starting simulation nr. {i}/{self.MAX_ITERATIONS}. Epsilon: {self.EPSILON_LOW}. Current time: {current_time}")
+            print(f"Starting simulation nr. {i+1}/{self.MAX_ITERATIONS}. Epsilon: {self.EPSILON_LOW}. Current time: {current_time}")
 
             self.rob.play_simulation()
             # A simulation runs until valid_environment returns False.
             while self.valid_environment():
                 curr_state = self.handle_state()  # Check in what state rob is, return tuple e.g. (0, 0, 0, 1, 0)
+                self.state_distribution.append(curr_state)  # Temporarily keep track of all used states for state distribution.
+                # TODO: after fixing state distribution, remove this part.
 
                 # Do we perform random action (due to epsilon < 1) or our best possible action?
                 if random.random() < (1 - self.EPSILON_LOW):
@@ -142,7 +147,7 @@ class Environment:
         # Since observation space is very large, we need to trim it down (bucketing) to only a select amount of
         # possible states, e.g. 4 for each sensor (4^8 = 65k). Or: use less sensors (no rear sensors for task 1).
         # The size (5, 5, 5, 5, 5) denotes each sensor, with its amount of possible states (see func handle_state).
-        q_table = np.random.uniform(low=0, high=0, size=([5, 5, 5, 5, 5] + [len(self.action_space)]))
+        q_table = np.random.uniform(low=0, high=0, size=([3, 3, 3, 3, 3] + [len(self.action_space)]))
         return np.round(q_table)
 
     def handle_state(self):
@@ -154,18 +159,20 @@ class Environment:
         sensor_values = (sensor_values - -0.65) / 0.65  # Scales all variables between [0, 1] where 0 is close proximity.
 
         # Check what the actual sensor_values are (between [0, 1]) and determine their state
+        # TODO fix distribution
         indices = []
         for sensor_value in sensor_values:
-            if 1 >= sensor_value >= 0.8:  # No need for action, moving forward is best.
+            self.state_distribution2.append(round(sensor_value, 3))
+            if 0.8 <= sensor_value <= 1:  # No need for action, moving forward is best.
                 indices.append(0)
-            elif 0.8 > sensor_value >= 0.6:
+            elif 0.65 <= sensor_value < 0.8:
                 indices.append(1)
-            elif 0.6 > sensor_value >= 0.4:  # We see an object, but not really close yet.
+            elif 0 <= sensor_value < 0.65:  # We see an object, but not really close yet.
                 indices.append(2)
-            elif 0.4 > sensor_value >= 0.2:
-                indices.append(3)
-            elif 0.2 > sensor_value >= 0:  # Close proximity.
-                indices.append(4)
+            # elif 0.2 <= sensor_value < 0.4:
+            #     indices.append(3)
+            # elif 0 <= sensor_value < 0.2:  # Close proximity.
+            #     indices.append(4)
 
         # Return the values in tuple format, with which we can index our Q-table. This tuple is a representation
         # of the current state our robot is in (i.e. what does the robot see with its sensors).
@@ -237,12 +244,47 @@ class Environment:
 
         return reward
 
+    def calculate_state_distribution(self):
+        # TODO delete this function when it's not needed anymore.
+        data = self.state_distribution  # List of (state) tuples.
+        print("dist: ", data)
+        dict_count = {}
+        for a in self.action_space:
+            dict_count[a] = 0
+
+        for tup in data:
+            for sensor_state in tup:
+                dict_count[sensor_state] += 1
+
+        return dict_count
+
+    def calculate_state_distribution2(self):
+        # Calculates the density function of all 5 sensors
+        # TODO delete this function when it's not needed anymore.
+        data = self.state_distribution2
+        plt.rcParams.update({'figure.figsize': (7, 5), 'figure.dpi': 100})
+
+        # Plot Histogram on x
+        x = data
+        plt.hist(x, bins=50)
+        plt.yscale('log')
+        plt.gca().set(title='Frequency Histogram log', ylabel='Frequency')
+        plt.show()
+
+        x = data
+        plt.hist(x, bins=50)
+        plt.yscale('linear')
+        plt.gca().set(title='Frequency Histogram linear', ylabel='Frequency')
+        plt.show()
+
 
 def main():
     env = Environment()
     if MODE == "train":
         env.start_environment()
         env.stats.save_rewards()
+        # print(env.calculate_state_distribution())  # TODO: remove this
+        # env.calculate_state_distribution2()  # TODO: remove this
     elif MODE == "test":
         env.test(TEST_FILENAME)
 
