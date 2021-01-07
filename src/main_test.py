@@ -17,8 +17,8 @@ from tqdm import tqdm, trange
 
 # If you want to test a Q-table (in pickle format), set MODE = "TEST". If you want to train a new/given Q-table,
 # set MODE = "train". If you use "train" you can select either NEW_Q_TABLE = True or False in the Environment class.
-MODE = "train"
-TEST_FILENAME = "results/q_table_50_200.pickle"  # Structure should be /src/results.
+MODE = "test"
+TEST_FILENAME = "results/q_table_100_250.pickle"  # Structure should be /src/results.
 
 
 class Direction:
@@ -37,7 +37,7 @@ class Environment:
     DISCOUNT_FACTOR = .95
     NEW_Q_TABLE = True  # True if we want to start new training, False if we want to use existing file.
     FILENAME = "reward_data50_200.pickle"  # Name of the q-table in case we LOAD the data (for testing).
-    IP_ADRES = '192.168.1.3'
+    IP_ADDRESS = '192.168.2.25'
 
     EPSILON_LOW = .6  # Start epsilon value. This gradually increases.
     EPSILON_HIGH = .99  # End epsilon value
@@ -58,7 +58,7 @@ class Environment:
         self.state_distribution = []  # TODO remove these variables after investigation.
         self.state_distribution2 = []  # TODO remove these variables after investigation.
         signal.signal(signal.SIGINT, self.terminate_program)
-        self.rob = robobo.SimulationRobobo().connect(address=self.IP_ADRES, port=19997)
+        self.rob = robobo.SimulationRobobo().connect(address=self.IP_ADDRESS, port=19997)
         self.stats = Statistics(self.MAX_ITERATIONS, self.MAX_SIMULATION_ITERATIONS)
 
         # Start with either a new Q-table or load one
@@ -216,10 +216,7 @@ class Environment:
         # This function checks whether rob is close to something or not. If it's close (about to collide), return True
         # It also keeps track of the collision counter. If this counter exceeds its threshold (COLLISION_THRESHOLD)
         # then the environment should reset (to avoid rob getting stuck).
-        try:
-            sensor_values = np.log(np.array(self.rob.read_irs())[3:]) / 10
-        except:
-            sensor_values = [0, 0, 0, 0, 0]
+        sensor_values = self.rob.read_irs()[3:]  # Should be absolute values (no log or anything).
         collision = any([0 < i < self.collision_boundary for i in sensor_values])
 
         if collision:
