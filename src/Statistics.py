@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pickle
 import os
+import copy
 
 
 class Statistics:
@@ -47,16 +48,42 @@ class Statistics:
             sum_reward.append(np.sum(self.rewards[i]))
         return sum_reward
 
-    def plot_average_reward_simulation(self):
+    def plot_average_reward_simulation(self, ylabel="Average reward", xlabel="Simulation number", title="Average reward per simulation"):
         plt.plot(self.get_average_reward_simulation())
-        plt.ylabel("Average reward")
-        plt.xlabel("Simulation number")
-        plt.title("Average reward per simulation")
+        plt.ylabel(ylabel)
+        plt.xlabel(xlabel)
+        plt.title(title)
         plt.show()
 
-    def plot_total_reward_simulation(self):
+    def plot_total_reward_simulation(self, ylabel="Total reward", xlabel = "Simulation number", title = "Total reward per simulation"):
         plt.plot(self.get_total_reward_simulation())
-        plt.ylabel("Total reward")
-        plt.xlabel("Simulation number")
-        plt.title("Total reward per simulation")
+        plt.ylabel(ylabel)
+        plt.xlabel(xlabel)
+        plt.title(title)
         plt.show()
+
+    def plot_data_rolling_window(self, data, window_size):
+
+        padded_data = copy.deepcopy(data)
+        window_data = []
+        pad_size = (window_size - 1) // 2
+        last_value = data[-1]
+
+        for i in range(pad_size):
+            padded_data.insert(0, 0)
+            padded_data.append(last_value)
+
+        print(len(data))
+        print(len(padded_data))
+
+        for i in range(len(data)):
+            total = 0
+            for j in range(window_size):
+                total += padded_data[i + j]
+            window_data.append(total/window_size)
+
+        plt.plot(window_data)
+        plt.ylabel("test")
+        plt.show()
+
+
