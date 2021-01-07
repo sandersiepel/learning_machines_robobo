@@ -164,7 +164,7 @@ class Environment:
         indices = []
         for sensor_value in sensor_values:
             self.state_distribution2.append(round(sensor_value, 3))
-            if 0.8 <= sensor_value <= 1:  # No need for action, moving forward is best.
+            if sensor_value >= 0.8:  # No need for action, moving forward is best.
                 indices.append(0)
             elif 0.65 <= sensor_value < 0.8:
                 indices.append(1)
