@@ -10,6 +10,7 @@ class Statistics:
         """
         Saves all rewards (for each iteration in each simulation) while training. Both parameters are initialized
         during the training phase.
+        The class also allows for some calculations and the generations of multiple different plots.
 
         Parameters:
             max_simulation: maximum amount of simulations
@@ -49,6 +50,13 @@ class Statistics:
         return sum_reward
 
     def get_data_rolling_window(self, window_size):
+        """
+        Applies the average value to a rolling window
+
+        Parameters:
+            The size of the window. This value must be uneven!
+        """
+
         data = self.get_average_reward_simulation()
         padded_data = copy.deepcopy(data)
         window_data = []
@@ -67,9 +75,27 @@ class Statistics:
 
         return window_data
 
-    def plot_data(self, data, ylabel="reward", xlabel = "Simulation number", title = "reward per simulation"):
+    @staticmethod
+    def plot_data(data, ylabel="reward", xlabel="Simulation number", title="reward per simulation"):
+        """
+        Plots a single data list
+        """
         plt.plot(data)
         plt.ylabel(ylabel)
         plt.xlabel(xlabel)
+        plt.title(title)
+        plt.show()
+
+    @staticmethod
+    def plot_two_same_axis(data1, data2, ylabel="Reward", xlabel="Simulation number",
+                           title="Reward per simulation", label1="label1", label2="label2"):
+        """
+        Plots two data sets in the same plot using the same y-axis
+        """
+        plt.plot(data1, label=label1)
+        plt.plot(data2, label=label2)
+        plt.ylabel(ylabel)
+        plt.xlabel(xlabel)
+        plt.legend()
         plt.title(title)
         plt.show()
