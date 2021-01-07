@@ -1,6 +1,6 @@
 from Statistics import Statistics
 
-stats = Statistics(50, 200)
+stats = Statistics(100, 200)
 
 stats.read_data()
 data1 = stats.get_average_reward_simulation()

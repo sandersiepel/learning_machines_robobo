@@ -17,7 +17,7 @@ from tqdm import tqdm, trange
 
 # If you want to test a Q-table (in pickle format), set MODE = "TEST". If you want to train a new/given Q-table,
 # set MODE = "train". If you use "train" you can select either NEW_Q_TABLE = True or False in the Environment class.
-MODE = "test"
+MODE = "train"
 TEST_FILENAME = "results/q_table_100_250.pickle"  # Structure should be /src/results.
 
 
@@ -31,7 +31,7 @@ class Direction:
 
 class Environment:
     # All of our constants, prone to change.
-    MAX_ITERATIONS = 50  # Amount of simulations until termination.
+    MAX_ITERATIONS = 100  # Amount of simulations until termination.
     MAX_SIMULATION_ITERATIONS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
@@ -106,7 +106,6 @@ class Environment:
                 self.iteration_counter = 0
                 self.rob.stop_world()
                 self.rob.wait_for_ping()  # Maybe we should wait for ping so we avoid errors.
-
 
     def test(self, filename):
         # This function can be used to test a Q-table. It will simply run the environment with a deterministic policy
