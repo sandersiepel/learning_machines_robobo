@@ -28,7 +28,7 @@ class Statistics:
 
     def save_rewards(self):
         # This function is used to save the accumulated rewards during training in a pickle file.
-        with open(f'src/results/reward_data_{self.max_simulation}_{self.max_iteration}.pickle', 'wb') as fp:
+        with open(f'results/reward_data_{self.max_simulation}_{self.max_iteration}.pickle', 'wb') as fp:
             pickle.dump(self.rewards, fp)
 
     def add_reward(self, simulation, iteration, reward):
@@ -88,12 +88,23 @@ class Statistics:
 
     @staticmethod
     def plot_two_same_axis(data1, data2, ylabel="Reward", xlabel="Simulation number",
-                           title="Reward per simulation", label1="label1", label2="label2"):
+                           title="Reward per simulation", label1="label1", label2="label2", opacity_n=0):
         """
         Plots two data sets in the same plot using the same y-axis
+
+        Parameters:
+            opacity_n: number of which dataset the opacity is changed for. Opacity = 0 for no change.
         """
-        plt.plot(data1, label=label1)
-        plt.plot(data2, label=label2)
+        if opacity_n == 1:
+            plt.plot(data1, label=label1, alpha=0.7)
+            plt.plot(data2, label=label2)
+        elif opacity_n == 2:
+            plt.plot(data2, label=label2, alpha=0.7)
+            plt.plot(data1, label=label1)
+        else:
+            plt.plot(data1, label=label1)
+            plt.plot(data2, label=label2)
+
         plt.ylabel(ylabel)
         plt.xlabel(xlabel)
         plt.legend()
