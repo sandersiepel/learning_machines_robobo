@@ -1,9 +1,10 @@
 from Statistics import Statistics
 
-stats = Statistics(5, 100)
+stats = Statistics(500, 250)
 
 stats.read_data()
 data1 = stats.get_average_reward_simulation()
-stats.plot_average_reward_simulation()
-stats.plot_total_reward_simulation()
-
+# stats.plot_data(stats.get_average_reward_simulation())
+# stats.plot_data(stats.get_data_rolling_window(5))
+stats.plot_two_same_axis(stats.get_average_reward_simulation(), stats.get_data_rolling_window(5), label1="avg reward",
+                         label2="avg reward with a window of size 5")

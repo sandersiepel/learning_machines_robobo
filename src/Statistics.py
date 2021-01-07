@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pickle
 import os
+import copy
 
 
 class Statistics:
@@ -9,6 +10,7 @@ class Statistics:
         """
         Saves all rewards (for each iteration in each simulation) while training. Both parameters are initialized
         during the training phase.
+        The class also allows for some calculations and the generations of multiple different plots.
 
         Parameters:
             max_simulation: maximum amount of simulations
@@ -47,16 +49,53 @@ class Statistics:
             sum_reward.append(np.sum(self.rewards[i]))
         return sum_reward
 
-    def plot_average_reward_simulation(self):
-        plt.plot(self.get_average_reward_simulation())
-        plt.ylabel("Average reward")
-        plt.xlabel("Simulation number")
-        plt.title("Average reward per simulation")
+    def get_data_rolling_window(self, window_size):
+        """
+        Applies the average value to a rolling window
+
+        Parameters:
+            The size of the window. This value must be uneven!
+        """
+
+        data = self.get_average_reward_simulation()
+        padded_data = copy.deepcopy(data)
+        window_data = []
+        pad_size = (window_size - 1) // 2
+        last_value = data[-1]
+
+        for i in range(pad_size):
+            padded_data = np.insert(padded_data, 0, 0)
+            padded_data = np.insert(padded_data, -1, last_value)
+
+        for i in range(len(data)):
+            total = 0
+            for j in range(window_size):
+                total += padded_data[i + j]
+            window_data.append(total/window_size)
+
+        return window_data
+
+    @staticmethod
+    def plot_data(data, ylabel="reward", xlabel="Simulation number", title="reward per simulation"):
+        """
+        Plots a single data list
+        """
+        plt.plot(data)
+        plt.ylabel(ylabel)
+        plt.xlabel(xlabel)
+        plt.title(title)
         plt.show()
 
-    def plot_total_reward_simulation(self):
-        plt.plot(self.get_total_reward_simulation())
-        plt.ylabel("Total reward")
-        plt.xlabel("Simulation number")
-        plt.title("Total reward per simulation")
+    @staticmethod
+    def plot_two_same_axis(data1, data2, ylabel="Reward", xlabel="Simulation number",
+                           title="Reward per simulation", label1="label1", label2="label2"):
+        """
+        Plots two data sets in the same plot using the same y-axis
+        """
+        plt.plot(data1, label=label1)
+        plt.plot(data2, label=label2)
+        plt.ylabel(ylabel)
+        plt.xlabel(xlabel)
+        plt.legend()
+        plt.title(title)
         plt.show()
