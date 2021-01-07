@@ -13,6 +13,8 @@ import pprint
 from Statistics import Statistics
 from datetime import datetime
 
+# If you want to test a Q-table (in pickle format), set MODE = "TEST". If you want to train a new/given Q-table,
+# set MODE = "train". If you use "train" you can select either NEW_Q_TABLE = True or False in the Environment class.
 MODE = "test"
 TEST_FILENAME = "src/results/q_table_500_250.pickle"
 
