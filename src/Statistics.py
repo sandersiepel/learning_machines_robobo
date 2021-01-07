@@ -48,33 +48,16 @@ class Statistics:
             sum_reward.append(np.sum(self.rewards[i]))
         return sum_reward
 
-    def plot_average_reward_simulation(self, ylabel="Average reward", xlabel="Simulation number", title="Average reward per simulation"):
-        plt.plot(self.get_average_reward_simulation())
-        plt.ylabel(ylabel)
-        plt.xlabel(xlabel)
-        plt.title(title)
-        plt.show()
-
-    def plot_total_reward_simulation(self, ylabel="Total reward", xlabel = "Simulation number", title = "Total reward per simulation"):
-        plt.plot(self.get_total_reward_simulation())
-        plt.ylabel(ylabel)
-        plt.xlabel(xlabel)
-        plt.title(title)
-        plt.show()
-
-    def plot_data_rolling_window(self, data, window_size):
-
+    def get_data_rolling_window(self, window_size):
+        data = self.get_average_reward_simulation()
         padded_data = copy.deepcopy(data)
         window_data = []
         pad_size = (window_size - 1) // 2
         last_value = data[-1]
 
         for i in range(pad_size):
-            padded_data.insert(0, 0)
-            padded_data.append(last_value)
-
-        print(len(data))
-        print(len(padded_data))
+            padded_data = np.insert(padded_data, 0, 0)
+            padded_data = np.insert(padded_data, -1, last_value)
 
         for i in range(len(data)):
             total = 0
@@ -82,8 +65,11 @@ class Statistics:
                 total += padded_data[i + j]
             window_data.append(total/window_size)
 
-        plt.plot(window_data)
-        plt.ylabel("test")
+        return window_data
+
+    def plot_data(self, data, ylabel="reward", xlabel = "Simulation number", title = "reward per simulation"):
+        plt.plot(data)
+        plt.ylabel(ylabel)
+        plt.xlabel(xlabel)
+        plt.title(title)
         plt.show()
-
-
