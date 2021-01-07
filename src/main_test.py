@@ -11,6 +11,10 @@ import random
 import matplotlib.pyplot as plt
 import pprint
 from Statistics import Statistics
+from datetime import datetime
+
+MODE = "test"
+TEST_FILENAME = "src/results/q_table_500_250.pickle"
 
 
 class Direction:
@@ -23,12 +27,12 @@ class Direction:
 
 class Environment:
     # All of our constants, prone to change.
-    MAX_ITERATIONS = 5  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 100  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_ITERATIONS = 500  # Amount of simulations until termination.
+    MAX_SIMULATION_ITERATIONS = 250  # Amount of actions within one simulation. Actions = Q-table updates.
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
     NEW_Q_TABLE = True  # True if we want to start new training, False if we want to use existing file.
-    filename = "reward_data40-250.pickle"  # Name of the q-table in case we LOAD the data (for testing).
+    FILENAME = "reward_data40-250.pickle"  # Name of the q-table in case we LOAD the data (for testing).
 
     EPSILON_LOW = .6  # Start epsilon value. This gradually increases.
     EPSILON_HIGH = .99  # End epsilon value
@@ -54,7 +58,7 @@ class Environment:
         if self.NEW_Q_TABLE:
             self.q_table = self.initialize_q_table()
         else:
-            self.q_table = self.read_q_table(self.filename)
+            self.q_table = self.read_q_table(self.FILENAME)
 
     @staticmethod
     def read_q_table(filename):
@@ -68,7 +72,8 @@ class Environment:
 
     def start_environment(self):
         for i in range(1, self.MAX_ITERATIONS):
-            print(f"Starting simulation nr. {i}")
+            current_time = datetime.now().strftime("%H:%M:%S")
+            print(f"Starting simulation nr. {i}/{self.MAX_ITERATIONS}. Epsilon: {self.EPSILON_LOW}. Current time: {current_time}")
 
             self.rob.play_simulation()
             # A simulation runs until valid_environment returns False.
@@ -92,6 +97,18 @@ class Environment:
                 self.iteration_counter = 0
                 self.rob.stop_world()
                 self.rob.wait_for_ping()  # Maybe we should wait for ping so we avoid errors.
+
+    def test(self, filename):
+        # This function can be used to test a Q-table. It will simply run the environment with a deterministic policy
+        # based on the Q-table (so it always chooses its best action).
+        # Terminate this function by pressing CTRL + C in terminal.
+        self.rob.play_simulation()
+        self.read_q_table(filename)
+        while True:
+            curr_state = self.handle_state()  # Check in what state rob is, return tuple e.g. (0, 0, 0, 1, 0)
+            best_action = np.argmax(self.q_table[curr_state])  # Choose its best action (deterministic).
+            # Given our selected action (whether best or random), perform this action and update the Q-table.
+            _ = self.update_q_table(best_action, curr_state)
 
     def terminate_program(self, test1, test2):
         print("Ctrl-C received, terminating program")
@@ -208,10 +225,10 @@ class Environment:
         # Calculate the new Q-value with the common formula
         new_q = (1 - self.LEARNING_RATE) * current_q + self.LEARNING_RATE * (reward + self.DISCOUNT_FACTOR * max_future_q)
 
-        print(f"Current state: {curr_state} with Q-values: {self.q_table[curr_state]}. \n"
-              f"If we play our best action {best_action}, we end up in new state: {new_state} with Q-values: {self.q_table[new_state]}.\n"
-              f"We now receive reward {reward}, the Q-value for current state is updates from {current_q} to {new_q}\n"
-              f"The max future reward is: {max_future_q}. Current epsilon value is: {self.EPSILON_LOW}\n")
+        # print(f"Current state: {curr_state} with Q-values: {self.q_table[curr_state]}. \n"
+        #       f"If we play our best action {best_action}, we end up in new state: {new_state} with Q-values: {self.q_table[new_state]}.\n"
+        #       f"We now receive reward {reward}, the Q-value for current state is updates from {current_q} to {new_q}\n"
+        #       f"The max future reward is: {max_future_q}. Current epsilon value is: {self.EPSILON_LOW}\n")
 
         # And lastly, update the value in the Q-table.
         self.q_table[curr_state][best_action] = new_q
@@ -221,8 +238,11 @@ class Environment:
 
 def main():
     env = Environment()
-    env.start_environment()
-    env.stats.save_rewards()
+    if MODE == "train":
+        env.start_environment()
+        env.stats.save_rewards()
+    elif MODE == "test":
+        env.test(TEST_FILENAME)
 
 
 if __name__ == "__main__":
