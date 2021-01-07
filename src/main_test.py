@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 import pprint
 from Statistics import Statistics
 from datetime import datetime
+import seaborn as sns
+from tqdm import tqdm, trange
 
 # If you want to test a Q-table (in pickle format), set MODE = "TEST". If you want to train a new/given Q-table,
 # set MODE = "train". If you use "train" you can select either NEW_Q_TABLE = True or False in the Environment class.
@@ -76,7 +78,7 @@ class Environment:
             pickle.dump(self.q_table, fp)
 
     def start_environment(self):
-        for i in range(self.MAX_ITERATIONS):
+        for i in trange(self.MAX_ITERATIONS):  # Nifty, innit?
             current_time = datetime.now().strftime("%H:%M:%S")
             print(f"Starting simulation nr. {i+1}/{self.MAX_ITERATIONS}. Epsilon: {self.EPSILON_LOW}. Current time: {current_time}")
 
@@ -169,9 +171,9 @@ class Environment:
             self.state_distribution2.append(round(sensor_value, 3))
             if 0.8 <= sensor_value <= 1:  # No need for action, moving forward is best.
                 indices.append(0)
-            elif 0.72 <= sensor_value < 0.8:
+            elif 0.65 <= sensor_value < 0.8:
                 indices.append(1)
-            elif sensor_value < 0.72:  # We see an object, but not really close yet.
+            elif sensor_value < 0.65:  # We see an object, but not really close yet.
                 indices.append(2)
             # elif 0.2 <= sensor_value < 0.4:
             #     indices.append(3)
