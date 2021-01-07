@@ -28,7 +28,7 @@ class Statistics:
 
     def save_rewards(self):
         # This function is used to save the accumulated rewards during training in a pickle file.
-        with open(f'src/results/reward_data_{self.max_simulation}_{self.max_iteration}.pickle', 'wb') as fp:
+        with open(f'results/reward_data_{self.max_simulation}_{self.max_iteration}.pickle', 'wb') as fp:
             pickle.dump(self.rewards, fp)
 
     def add_reward(self, simulation, iteration, reward):

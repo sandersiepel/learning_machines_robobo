@@ -12,12 +12,11 @@ import matplotlib.pyplot as plt
 import pprint
 from Statistics import Statistics
 from datetime import datetime
-import seaborn as sns
 
 # If you want to test a Q-table (in pickle format), set MODE = "TEST". If you want to train a new/given Q-table,
 # set MODE = "train". If you use "train" you can select either NEW_Q_TABLE = True or False in the Environment class.
 MODE = "train"
-TEST_FILENAME = "src/results/q_table_500_250.pickle"  # Structure should be /src/results.
+TEST_FILENAME = "results/q_table_50_200.pickle"  # Structure should be /src/results.
 
 
 class Direction:
@@ -35,7 +34,8 @@ class Environment:
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
     NEW_Q_TABLE = True  # True if we want to start new training, False if we want to use existing file.
-    FILENAME = "reward_data40-250.pickle"  # Name of the q-table in case we LOAD the data (for testing).
+    FILENAME = "reward_data50_200.pickle"  # Name of the q-table in case we LOAD the data (for testing).
+    IP_ADRES = '192.168.1.3'
 
     EPSILON_LOW = .6  # Start epsilon value. This gradually increases.
     EPSILON_HIGH = .99  # End epsilon value
@@ -56,7 +56,7 @@ class Environment:
         self.state_distribution = []  # TODO remove these variables after investigation.
         self.state_distribution2 = []  # TODO remove these variables after investigation.
         signal.signal(signal.SIGINT, self.terminate_program)
-        self.rob = robobo.SimulationRobobo().connect(address='192.168.2.25', port=19997)
+        self.rob = robobo.SimulationRobobo().connect(address=self.IP_ADRES, port=19997)
         self.stats = Statistics(self.MAX_ITERATIONS, self.MAX_SIMULATION_ITERATIONS)
 
         # Start with either a new Q-table or load one
@@ -72,7 +72,7 @@ class Environment:
         return q_table
 
     def store_q_table(self):
-        with open(f"src/results/q_table_{self.MAX_ITERATIONS}_{self.MAX_SIMULATION_ITERATIONS}.pickle", 'wb') as fp:
+        with open(f"results/q_table_{self.MAX_ITERATIONS}_{self.MAX_SIMULATION_ITERATIONS}.pickle", 'wb') as fp:
             pickle.dump(self.q_table, fp)
 
     def start_environment(self):
@@ -104,6 +104,7 @@ class Environment:
                 self.iteration_counter = 0
                 self.rob.stop_world()
                 self.rob.wait_for_ping()  # Maybe we should wait for ping so we avoid errors.
+
 
     def test(self, filename):
         # This function can be used to test a Q-table. It will simply run the environment with a deterministic policy
@@ -154,7 +155,10 @@ class Environment:
         # This function should return the values with which we can index our q_table, in tuple format.
         # So, it should take the last 5 sensor inputs (current state), transform each of them into a bucket where
         # the bucket size is already determined by the shape of the q_table.
-        sensor_values = np.log(np.array(self.rob.read_irs())[3:]) / 10
+        try:
+            sensor_values = np.log(np.array(self.rob.read_irs())[3:]) / 10
+        except:
+            sensor_values = [0,0,0,0,0]
         sensor_values = np.where(sensor_values == -np.inf, 0, sensor_values)  # Remove the infinite values.
         sensor_values = (sensor_values - -0.65) / 0.65  # Scales all variables between [0, 1] where 0 is close proximity.
 
@@ -165,9 +169,9 @@ class Environment:
             self.state_distribution2.append(round(sensor_value, 3))
             if 0.8 <= sensor_value <= 1:  # No need for action, moving forward is best.
                 indices.append(0)
-            elif 0.65 <= sensor_value < 0.8:
+            elif 0.72 <= sensor_value < 0.8:
                 indices.append(1)
-            elif 0 <= sensor_value < 0.65:  # We see an object, but not really close yet.
+            elif sensor_value < 0.72:  # We see an object, but not really close yet.
                 indices.append(2)
             # elif 0.2 <= sensor_value < 0.4:
             #     indices.append(3)
@@ -210,7 +214,10 @@ class Environment:
         # This function checks whether rob is close to something or not. If it's close (about to collide), return True
         # It also keeps track of the collision counter. If this counter exceeds its threshold (COLLISION_THRESHOLD)
         # then the environment should reset (to avoid rob getting stuck).
-        sensor_values = np.array(self.rob.read_irs())[3:]
+        try:
+            sensor_values = np.log(np.array(self.rob.read_irs())[3:]) / 10
+        except:
+            sensor_values = [0, 0, 0, 0, 0]
         collision = any([0 < i < self.collision_boundary for i in sensor_values])
 
         if collision:
