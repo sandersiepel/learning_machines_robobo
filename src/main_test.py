@@ -13,6 +13,7 @@ import pprint
 from Statistics import Statistics
 from datetime import datetime
 import seaborn as sns
+from tqdm import tqdm, trange
 
 # If you want to test a Q-table (in pickle format), set MODE = "TEST". If you want to train a new/given Q-table,
 # set MODE = "train". If you use "train" you can select either NEW_Q_TABLE = True or False in the Environment class.
@@ -30,8 +31,8 @@ class Direction:
 
 class Environment:
     # All of our constants, prone to change.
-    MAX_ITERATIONS = 50  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_ITERATIONS = 100  # Amount of simulations until termination.
+    MAX_SIMULATION_ITERATIONS = 250  # Amount of actions within one simulation. Actions = Q-table updates.
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
     NEW_Q_TABLE = True  # True if we want to start new training, False if we want to use existing file.
@@ -76,7 +77,7 @@ class Environment:
             pickle.dump(self.q_table, fp)
 
     def start_environment(self):
-        for i in range(self.MAX_ITERATIONS):
+        for i in trange(self.MAX_ITERATIONS):  # Nifty, innit?
             current_time = datetime.now().strftime("%H:%M:%S")
             print(f"Starting simulation nr. {i+1}/{self.MAX_ITERATIONS}. Epsilon: {self.EPSILON_LOW}. Current time: {current_time}")
 
@@ -167,7 +168,7 @@ class Environment:
                 indices.append(0)
             elif 0.65 <= sensor_value < 0.8:
                 indices.append(1)
-            elif 0 <= sensor_value < 0.65:  # We see an object, but not really close yet.
+            elif sensor_value < 0.65:  # We see an object, but not really close yet.
                 indices.append(2)
             # elif 0.2 <= sensor_value < 0.4:
             #     indices.append(3)
