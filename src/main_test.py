@@ -17,7 +17,7 @@ from tqdm import tqdm, trange
 
 # If you want to test a Q-table (in pickle format), set MODE = "TEST". If you want to train a new/given Q-table,
 # set MODE = "train". If you use "train" you can select either NEW_Q_TABLE = True or False in the Environment class.
-MODE = "train"
+MODE = "test"
 #TODO change to include test name
 TEST_FILENAME = "results/q_table_50_200.pickle"  # Structure should be /src/results.
 
@@ -39,7 +39,7 @@ class Environment:
     NEW_Q_TABLE = True  # True if we want to start new training, False if we want to use existing file.
     EXPERIMENT_NAME = 'steady_epsilon'
     FILENAME = f"reward_data_{MAX_ITERATIONS}_{MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"  # Name of the q-table in case we LOAD the data (for testing).
-    IP_ADDRESS = '192.168.1.3'
+    IP_ADDRESS = '192.168.2.25'
 
     EPSILON_LOW = .6  # Start epsilon value. This gradually increases.
     EPSILON_HIGH = .99  # End epsilon value
@@ -82,7 +82,7 @@ class Environment:
     def start_environment(self):
         for i in trange(self.MAX_ITERATIONS):  # Nifty, innit?
             current_time = datetime.now().strftime("%H:%M:%S")
-            print(f"Starting simulation nr. {i+1}/{self.MAX_ITERATIONS}. Epsilon: {self.EPSILON_LOW}. Current time: {current_time}")
+            # print(f"Starting simulation nr. {i+1}/{self.MAX_ITERATIONS}. Epsilon: {self.EPSILON_LOW}. Current time: {current_time}")
 
             self.rob.play_simulation()
             # A simulation runs until valid_environment returns False.
@@ -103,7 +103,7 @@ class Environment:
                 self.change_epsilon()  # Check if we should increase epsilon or not.
                 self.iteration_counter += 1  # Keep track of how many actions this simulation does.
             else:
-                print(f"Environment is not valid anymore, starting new environment")
+                # print(f"Environment is not valid anymore, starting new environment")
                 self.store_q_table()
                 self.iteration_counter = 0
                 self.rob.stop_world()
@@ -141,7 +141,7 @@ class Environment:
         if self.epsilon_counter == self.epsilon_increase:
             if self.EPSILON_LOW < self.EPSILON_HIGH:
                 self.EPSILON_LOW += self.EPSILON_INCREASE
-                print(f"Increasing epsilon to {self.EPSILON_LOW}")
+                # print(f"Increasing epsilon to {self.EPSILON_LOW}")
                 self.epsilon_counter = 0
         else:
             self.epsilon_counter += 1
@@ -220,7 +220,8 @@ class Environment:
         try:
             sensor_values = self.rob.read_irs()[3:]  # Should be absolute values (no log or anything).
         except:
-            sensor_values = [0,0,0,0,0]
+            sensor_values = [0, 0, 0, 0, 0]
+
         collision = any([0 < i < self.collision_boundary for i in sensor_values])
 
         if collision:
