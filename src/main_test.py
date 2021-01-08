@@ -34,7 +34,7 @@ class Direction:
 
 class Environment:
     # All of our constants, prone to change.
-    MAX_ITERATIONS = 50  # Amount of simulations until termination.
+    MAX_ITERATIONS = 100  # Amount of simulations until termination.
     MAX_SIMULATION_ITERATIONS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
@@ -198,7 +198,6 @@ class Environment:
         else:
             left, right, duration = Direction.FORWARD  # Forward, action 2
 
-        print(f"Action: {action}, reward: {reward}, collision: {collision}")
         self.rob.move(left, right, duration)
         return self.handle_state(), reward  # New_state, reward
 
@@ -238,7 +237,6 @@ class Environment:
         collision_far = any([0.13 <= i < 0.2 for i in sensor_values])
         collision_close = any([0 < i < 0.13 for i in sensor_values])
 
-        print(sensor_values)
         if collision_close:
             self.collision_counter += 1
             return "close"
