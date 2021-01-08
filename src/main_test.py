@@ -19,7 +19,7 @@ from tqdm import tqdm, trange
 # set MODE = "train". If you use "train" you can select either NEW_Q_TABLE = True or False in the Environment class.
 MODE = "train"
 #TODO change to include test name
-TEST_FILENAME = "results/q_table_50_200_name}.pickle"  # Structure should be /src/results.
+TEST_FILENAME = "results/q_table_50_200_name.pickle"  # Structure should be /src/results.
 
 
 class Direction:
@@ -32,14 +32,14 @@ class Direction:
 
 class Environment:
     # All of our constants, prone to change.
-    MAX_ITERATIONS = 50  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_ITERATIONS = 20  # Amount of simulations until termination.
+    MAX_SIMULATION_ITERATIONS = 150  # Amount of actions within one simulation. Actions = Q-table updates.
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
     NEW_Q_TABLE = True  # True if we want to start new training, False if we want to use existing file.
-    EXPERIMENT_NAME = 'steady_epsilon'
-    FILENAME = f"reward_data_{MAX_ITERATIONS}_{MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"  # Name of the q-table in case we LOAD the data (for testing).
-    IP_ADDRESS = '192.168.1.3'
+    EXPERIMENT_NAME = 'dynamic epsilon'
+    FILENAME = f"results/reward_data_{MAX_ITERATIONS}_{MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"  # Name of the q-table in case we LOAD the data (for testing).
+    IP_ADDRESS = '192.168.2.25'
 
     EPSILON_LOW = .6  # Start epsilon value. This gradually increases.
     EPSILON_HIGH = .99  # End epsilon value
