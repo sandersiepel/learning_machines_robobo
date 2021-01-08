@@ -19,10 +19,9 @@ from tqdm import tqdm, trange
 # If you want to test a Q-table (in pickle format), set MODE = "TEST". If you want to train a new/given Q-table,
 # set MODE = "train". If you use "train" you can select either NEW_Q_TABLE = True or False in the Environment class.
 MODE = "train"
-MULTIPLE_RUNS = True  # doing an experiment multiple times
+MULTIPLE_RUNS = False  # doing an experiment multiple times
 N_RUNS = 5  # how many times an experiment is done if MULTIPLE_RUNS is set to True
-#TODO change to include test name
-TEST_FILENAME = "results/q_table_50_200_name.pickle"  # Structure should be /src/results.
+TEST_FILENAME = "results/q_table_50_200_name.pickle"  # The name of the test Q-table if MODE = "test"
 
 
 class Direction:
@@ -40,7 +39,7 @@ class Environment:
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
     NEW_Q_TABLE = True  # True if we want to start new training, False if we want to use existing file.
-    EXPERIMENT_NAME = '5x50x200'
+    EXPERIMENT_NAME = 'test_collision'
     FILENAME = f"results/reward_data_{MAX_ITERATIONS}_{MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"  # Name of the q-table in case we LOAD the data (for testing).
     IP_ADDRESS = os.environ['IP_ADDRESS']
 
@@ -51,10 +50,9 @@ class Environment:
     COLLISION_THRESHOLD = 100  # After how many collision actions should we reset the environment? Prevents rob getting stuck.
 
     action_space = [0, 1, 2, 3, 4]  # All of our available actions. Find definitions in the Direction class.
-    collision_boundary = .1  # The boundary that determines collision or not.
     collision_counter, iteration_counter, epsilon_counter = 0, 0, 0
 
-    EXPERIMENT_COUNTER = 0
+    EXPERIMENT_COUNTER = 0  # Only needed for training over multiple experiments (MULTIPLE_RUNS = "True")
 
     # The epsilon_increase determines when the epsilon should be increased. This happens gradually from EPSILON_LOW
     # to EPSILON_HIGH during the amount of allowed iterations. So when MAX_ITERATIONS reaches its limit, so does
@@ -183,8 +181,11 @@ class Environment:
         # This function should accept an action (0, 1, 2...) and move the robot accordingly (left, right, forward).
         # It returns two things: new_state, which is the state (in tuple format) after this action has been performed.
         # and reward, which is the reward from this action.
-        reward = -1
-        collision = self.collision()  # Do we collide, True/False
+
+        collision = self.collision()  # Do we collide, returns the distance ("close", "far", "nothing"). Both close and
+        # far are collisions, "nothing" is no collision at all.
+
+        reward = self.determine_reward(collision, action)
 
         if action == 0:
             left, right, duration = Direction.LEFT  # Left, action 0
@@ -196,16 +197,37 @@ class Environment:
             left, right, duration = Direction.LLEFT  # Extreme left, action 4
         else:
             left, right, duration = Direction.FORWARD  # Forward, action 2
-            if collision:
-                reward -= 4
-            else:
-                reward += 2
 
+        print(f"Action: {action}, reward: {reward}, collision: {collision}")
         self.rob.move(left, right, duration)
         return self.handle_state(), reward  # New_state, reward
 
+    @staticmethod
+    def determine_reward(collision, action):
+        # This function determines the reward an action should get, depending on whether or not rob is about to
+        # collide with an object within the environment.
+        reward = 0
+
+        if action in [0, 1, 3, 4]:  # Action is moving either left or right.
+            if collision == "nothing":
+                reward -= 2
+            elif collision == "far":
+                reward += 2
+            elif collision == "close":
+                reward += 5
+        elif action in [2]:  # Action is moving forward.
+            if collision == "far":
+                reward -= 2
+            elif collision == "close":
+                reward -= 10
+            elif collision == "nothing":
+                reward += 10
+
+        return reward
+
     def collision(self):
-        # This function checks whether rob is close to something or not. If it's close (about to collide), return True
+        # This function checks whether rob is close to something or not. It returns True if it's about to collide with
+        # another object. Also returns the "distance", either "close", "far" or "nothing".
         # It also keeps track of the collision counter. If this counter exceeds its threshold (COLLISION_THRESHOLD)
         # then the environment should reset (to avoid rob getting stuck).
         try:
@@ -213,12 +235,17 @@ class Environment:
         except RuntimeWarning:
             sensor_values = [0, 0, 0, 0, 0]
 
-        collision = any([0 < i < self.collision_boundary for i in sensor_values])
-        if collision:
+        collision_far = any([0.13 <= i < 0.2 for i in sensor_values])
+        collision_close = any([0 < i < 0.13 for i in sensor_values])
+
+        print(sensor_values)
+        if collision_close:
             self.collision_counter += 1
-            return True
+            return "close"
+        elif collision_far:
+            return "far"
         else:
-            return False
+            return "nothing"
 
     def update_q_table(self, best_action, curr_state):
         # This function updates the Q-table accordingly to the current state of rob.
