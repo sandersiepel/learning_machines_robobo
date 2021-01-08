@@ -44,6 +44,7 @@ class Environment:
     EPSILON_LOW = .6  # Start epsilon value. This gradually increases.
     EPSILON_HIGH = .99  # End epsilon value
     EPSILON_INCREASE = .01  # How much should we increase the epsilon value with, each time?
+
     COLLISION_THRESHOLD = 100  # After how many collision actions should we reset the environment? Prevents rob getting stuck.
 
     action_space = [0, 1, 2, 3, 4]  # All of our available actions. Find definitions in the Direction class.
@@ -160,7 +161,7 @@ class Environment:
         try:
             sensor_values = np.log(np.array(self.rob.read_irs())[3:]) / 10
         except:
-            sensor_values = [0,0,0,0,0]
+            sensor_values = [0, 0, 0, 0, 0]
         sensor_values = np.where(sensor_values == -np.inf, 0, sensor_values)  # Remove the infinite values.
         sensor_values = (sensor_values - -0.65) / 0.65  # Scales all variables between [0, 1] where 0 is close proximity.
 
