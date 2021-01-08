@@ -28,7 +28,7 @@ class Statistics:
 
     def save_rewards(self, name):
         # This function is used to save the accumulated rewards during training in a pickle file.
-        with open(f'results/reward_data_{self.max_simulation}_{self.max_iteration}_{name}.pickle', 'wb') as fp:
+        with open(name, 'wb') as fp:
             pickle.dump(self.rewards, fp)
 
     def add_reward(self, simulation, iteration, reward):
@@ -76,24 +76,21 @@ class Statistics:
         return window_data
 
     @staticmethod
-    def plot_data(data, ylabel="reward", xlabel="Simulation number", title="reward per simulation"):
+    def plot_data(data, y_label="reward", x_label="Simulation number", title="reward per simulation"):
         """
         Plots a single data list
         """
         plt.plot(data)
-        plt.ylabel(ylabel)
-        plt.xlabel(xlabel)
+        plt.ylabel(y_label)
+        plt.xlabel(x_label)
         plt.title(title)
         plt.show()
 
     @staticmethod
-    def plot_two_same_axis(data1, data2, ylabel="Reward", xlabel="Simulation number",
+    def plot_two_same_axis(data1, data2, y_label="Reward", x_label="Simulation number",
                            title="Reward per simulation", label1="label1", label2="label2", opacity_n=0):
         """
         Plots two data sets in the same plot using the same y-axis
-
-        Parameters:
-            opacity_n: number of which dataset the opacity is changed for. Opacity = 0 for no change.
         """
         if opacity_n == 1:
             plt.plot(data1, label=label1, alpha=0.7)
@@ -105,8 +102,32 @@ class Statistics:
             plt.plot(data1, label=label1)
             plt.plot(data2, label=label2)
 
-        plt.ylabel(ylabel)
-        plt.xlabel(xlabel)
+        plt.ylabel(y_label)
+        plt.xlabel(x_label)
         plt.legend()
+        plt.title(title)
+        plt.show()
+
+    @staticmethod
+    def plot_two_different_axis(data1, data2, y_label1="Reward", y_label2="Epsilon",
+                                x_label="Simulation number",
+                                title="Reward per simulation", label1="label1", label2="label2"):
+        fig, ax1 = plt.subplots()
+
+        ax1.set_xlabel(x_label)
+        ax1.set_ylabel(y_label1)
+        lns1 = ax1.plot(data1, color='tab:blue', label=label1)
+        ax1.tick_params(axis='y')
+
+        ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+
+        ax2.set_ylabel(y_label2)  # we already handled the x-label with ax1
+        lns2 = ax2.plot(data2, color='tab:orange', label=label2)
+        ax2.tick_params(axis='y')
+
+        lns = lns1 + lns2
+        labs = [l.get_label() for l in lns]
+        ax2.legend(lns, labs, loc=0)
+
         plt.title(title)
         plt.show()

@@ -19,7 +19,7 @@ from tqdm import tqdm, trange
 # set MODE = "train". If you use "train" you can select either NEW_Q_TABLE = True or False in the Environment class.
 MODE = "train"
 #TODO change to include test name
-TEST_FILENAME = "results/q_table_50_200.pickle"  # Structure should be /src/results.
+TEST_FILENAME = "results/q_table_50_200_name}.pickle"  # Structure should be /src/results.
 
 
 class Direction:
@@ -220,7 +220,7 @@ class Environment:
         try:
             sensor_values = self.rob.read_irs()[3:]  # Should be absolute values (no log or anything).
         except:
-            sensor_values = [0,0,0,0,0]
+            sensor_values = [0, 0, 0, 0, 0]
         collision = any([0 < i < self.collision_boundary for i in sensor_values])
 
         if collision:
