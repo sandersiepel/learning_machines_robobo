@@ -19,8 +19,8 @@ from tqdm import tqdm, trange
 # If you want to test a Q-table (in pickle format), set MODE = "TEST". If you want to train a new/given Q-table,
 # set MODE = "train". If you use "train" you can select either NEW_Q_TABLE = True or False in the Environment class.
 MODE = "train"
-MULTIPLE_RUNS = True # doing an experiment multiple times
-N_RUNS = 5 # how many times an experiment is done if MULTIPLE_RUNS is set to True
+MULTIPLE_RUNS = True  # doing an experiment multiple times
+N_RUNS = 5  # how many times an experiment is done if MULTIPLE_RUNS is set to True
 #TODO change to include test name
 TEST_FILENAME = "results/q_table_50_200_name.pickle"  # Structure should be /src/results.
 
@@ -35,12 +35,12 @@ class Direction:
 
 class Environment:
     # All of our constants, prone to change.
-    MAX_ITERATIONS = 5  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 100  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_ITERATIONS = 50  # Amount of simulations until termination.
+    MAX_SIMULATION_ITERATIONS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
     NEW_Q_TABLE = True  # True if we want to start new training, False if we want to use existing file.
-    EXPERIMENT_NAME = 'test'
+    EXPERIMENT_NAME = '5x50x200'
     FILENAME = f"results/reward_data_{MAX_ITERATIONS}_{MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"  # Name of the q-table in case we LOAD the data (for testing).
     IP_ADDRESS = os.environ['IP_ADDRESS']
 
@@ -62,8 +62,6 @@ class Environment:
     epsilon_increase = int(((MAX_ITERATIONS * MAX_SIMULATION_ITERATIONS) // (EPSILON_HIGH - EPSILON_LOW) * 100) / 10_000)
 
     def __init__(self):
-        self.state_distribution = []  # TODO remove these variables after investigation.
-        self.state_distribution2 = []  # TODO remove these variables after investigation.
         signal.signal(signal.SIGINT, self.terminate_program)
         self.rob = robobo.SimulationRobobo().connect(address=self.IP_ADDRESS, port=19997)
         self.stats = Statistics(self.MAX_ITERATIONS, self.MAX_SIMULATION_ITERATIONS)
@@ -77,8 +75,6 @@ class Environment:
         for i in trange(self.MAX_ITERATIONS):  # Nifty, innit?
             # print(f"Starting simulation nr. {i+1}/{self.MAX_ITERATIONS}. Epsilon: {self.EPSILON_LOW}. Q-table size: {self.q_table.size}")
 
-            current_time = datetime.now().strftime("%H:%M:%S")
-            # print(f"Starting simulation nr. {i+1}/{self.MAX_ITERATIONS}. Epsilon: {self.EPSILON_LOW}. Current time: {current_time}")
             self.rob.wait_for_ping()
             self.rob.play_simulation()
             # A simulation runs until valid_environment returns False.
