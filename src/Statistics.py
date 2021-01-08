@@ -143,17 +143,28 @@ class Statistics:
 
 class Experiment:
 
-    def __init__(self, experiment_name, num_simulations, num_iterations, num_experiments=5):
-        self.df = pd.DataFrame(columns=["Reward","Run"])
+    def __init__(self, experiment_name, num_simulations, num_iterations, num_experiments=5, window=False,
+                 window_size=5):
+        self.df = pd.DataFrame(columns=["Reward", "Run"])
         for i in range(num_experiments):
             stat = Statistics(num_simulations, num_iterations)
             stat.read_experiment(experiment_name, i+1)
-            df2 = pd.DataFrame(stat.get_average_reward_simulation(),columns=["Reward"])
+            if window:
+                df2 = pd.DataFrame(stat.get_data_rolling_window(window_size), columns=["Reward"])
+            else:
+                df2 = pd.DataFrame(stat.get_average_reward_simulation(), columns=["Reward"])
             df2['Run'] = i+1
             df2['Simulation'] = df2.index + 1
+            df2['experiment_name'] = experiment_name
             self.df = self.df.append(df2, ignore_index=True)
 
-    def plot_experiment(self, title="Average over 5 runs with its std"):
+    def plot_single_experiment(self, title="Average over 5 runs with its std"):
         ax = sns.lineplot(data=self.df, x="Simulation", y="Reward")
+        ax.set_title(title)
+        plt.show()
+
+    def plot_two_experiments(self, experiment, title="Comparing average rewards over 5 runs with their std"):
+        df2 = self.df.append(experiment.df, ignore_index=True)
+        ax = sns.lineplot(data=df2, x="Simulation", y="Reward", hue="experiment_name")
         ax.set_title(title)
         plt.show()
