@@ -21,7 +21,7 @@ from tqdm import tqdm, trange
 MODE = "train"
 MULTIPLE_RUNS = False  # doing an experiment multiple times
 N_RUNS = 5  # how many times an experiment is done if MULTIPLE_RUNS is set to True
-TEST_FILENAME = "results/q_table_50_200_name.pickle"  # The name of the test Q-table if MODE = "test"
+TEST_FILENAME = "results/q_table_10_500.pickle"  # The name of the test Q-table if MODE = "test"
 
 
 class Direction:
@@ -34,17 +34,17 @@ class Direction:
 
 class Environment:
     # All of our constants, prone to change.
-    MAX_ITERATIONS = 100  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_ITERATIONS = 500  # Amount of simulations until termination.
+    MAX_SIMULATION_ITERATIONS = 250  # Amount of actions within one simulation. Actions = Q-table updates.
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
     NEW_Q_TABLE = True  # True if we want to start new training, False if we want to use existing file.
-    EXPERIMENT_NAME = 'static_epsilon'
+    EXPERIMENT_NAME = 'randomExperiment'
     FILENAME = f"results/reward_data_{MAX_ITERATIONS}_{MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"  # Name of the q-table in case we LOAD the data (for testing).
     IP_ADDRESS = os.environ['IP_ADDRESS']
 
-    EPSILON_LOW = .6  # Start epsilon value. This gradually increases.
-    EPSILON_HIGH = .99  # End epsilon value
+    EPSILON_LOW = 0.6  # Start epsilon value. This gradually increases.
+    EPSILON_HIGH = 1  # End epsilon value
     EPSILON_INCREASE = .01  # How much should we increase the epsilon value with, each time?
 
     COLLISION_THRESHOLD = 100  # After how many collision actions should we reset the environment? Prevents rob getting stuck.
@@ -105,8 +105,20 @@ class Environment:
         with open(f"results/q_table_{self.MAX_ITERATIONS}_{self.MAX_SIMULATION_ITERATIONS}.pickle", 'wb') as fp:
             pickle.dump(self.q_table, fp)
 
+    def best_action_for_state(self, state):
+        q_row = self.q_table[state]
+        max_val = max(q_row)
+        max_val_indices = [i for i, j in enumerate(q_row) if j == max_val]
+
+        if len(max_val_indices) > 1:  # If we have multiple max values...
+            best_action = random.choice(max_val_indices)
+        else:
+            best_action = np.argmax(q_row)
+
+        return best_action
+
     def determine_action(self, curr_state):
-        return random.choice(self.action_space) if random.random() < (1 - self.EPSILON_LOW) else np.argmax(self.q_table[curr_state])
+        return random.choice(self.action_space) if random.random() < (1 - self.EPSILON_LOW) else self.best_action_for_state(curr_state)
 
     def test(self, filename):
         # This function can be used to test a Q-table. It will simply run the environment with a deterministic policy
@@ -117,12 +129,15 @@ class Environment:
 
         while True:
             curr_state = self.handle_state()  # Check in what state rob is, return tuple e.g. (0, 0, 0, 1, 0)
-            best_action = np.argmax(self.q_table[curr_state])  # Choose its best action (deterministic).
+
+            # Choose its best action (deterministic).
+            best_action = self.best_action_for_state(curr_state)
+
             # Given our selected action (whether best or random), perform this action and update the Q-table.
             _ = self.update_q_table(best_action, curr_state)
 
     def terminate_program(self, test1, test2):
-        print("Ctrl-C received, terminating program")
+        print(f"Ctrl-C received, terminating program. Saving Q-table with name: {self.MAX_ITERATIONS}_{self.MAX_SIMULATION_ITERATIONS}.pickle")
         self.store_q_table()
         sys.exit(1)
 
@@ -149,7 +164,7 @@ class Environment:
         # Since observation space is very large, we need to trim it down (bucketing) to only a select amount of
         # possible states, e.g. 4 for each sensor (4^8 = 65k). Or: use less sensors (no rear sensors for task 1).
         # The size (5, 5, 5, 5, 5) denotes each sensor, with its amount of possible states (see func handle_state).
-        return np.random.uniform(low=0, high=0, size=([3, 3, 3, 3, 3] + [len(self.action_space)]))
+        return np.random.uniform(low=-.1, high=.1, size=([3, 3, 3, 3, 3] + [len(self.action_space)]))
 
     def handle_state(self):
         # This function should return the values with which we can index our q_table, in tuple format.
@@ -209,18 +224,18 @@ class Environment:
 
         if action in [0, 1, 3, 4]:  # Action is moving either left or right.
             if collision == "nothing":
-                reward -= 2
+                reward -= 1
             elif collision == "far":
+                reward += 1
+            elif collision == "close":
                 reward += 2
-            elif collision == "close":
-                reward += 5
-        elif action in [2]:  # Action is moving forward.
+        elif action == 2:  # Action is moving forward.
             if collision == "far":
-                reward -= 2
+                reward -= 1
             elif collision == "close":
-                reward -= 10
+                reward -= 3
             elif collision == "nothing":
-                reward += 10
+                reward += 3
 
         return reward
 
@@ -248,6 +263,8 @@ class Environment:
     def update_q_table(self, best_action, curr_state):
         # This function updates the Q-table accordingly to the current state of rob.
         # First, we determine the new state we end in if we would play our current best action, given our current state.
+        # print(f"State: {curr_state}")
+        # print(f"Old q-row: {self.q_table[curr_state]} (playing action {best_action})")
         new_state, reward = self.handle_action(best_action)
 
         # Then we calculate the reward we would get in this new state.
@@ -260,21 +277,24 @@ class Environment:
         new_q = (1 - self.LEARNING_RATE) * current_q + self.LEARNING_RATE * (reward + self.DISCOUNT_FACTOR * max_future_q)
 
         # print(f"Current state: {curr_state} with Q-values: {self.q_table[curr_state]}. \n"
-        #       f"If we play our best action {best_action}, we end up in new state: {new_state} with Q-values: {self.q_table[new_state]}.\n"
+        #       f"If we play our best/random action {best_action}, we end up in new state: {new_state} with Q-values: {self.q_table[new_state]}.\n"
         #       f"We now receive reward {reward}, the Q-value for current state is updates from {current_q} to {new_q}\n"
         #       f"The max future reward is: {max_future_q}. Current epsilon value is: {self.EPSILON_LOW}\n")
 
         # And lastly, update the value in the Q-table.
         self.q_table[curr_state][best_action] = new_q
+        # print(f"New q-row: {self.q_table[curr_state]}\n")
         return reward
 
 
 def main():
     env = Environment()
     if MODE == "train":
-        if MULTIPLE_RUNS:  # option to do multiple runs
-            if not os.path.exists(f'results/{env.EXPERIMENT_NAME}'):  # check if directory already exists
+        if MULTIPLE_RUNS:  # Option to do multiple runs
+            # Check if rewards folder exists, if not: create it.
+            if not os.path.exists(f'results/{env.EXPERIMENT_NAME}'):
                 os.makedirs(f'results/{env.EXPERIMENT_NAME}')
+
             epsilon_low = env.EPSILON_LOW
             for i in range(N_RUNS):
                 print(f"Begin experiment {i+1}/{N_RUNS}")
