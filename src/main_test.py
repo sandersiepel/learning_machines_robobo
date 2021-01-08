@@ -9,6 +9,7 @@ import prey
 import pickle
 import random
 import matplotlib.pyplot as plt
+import os
 import pprint
 from Statistics import Statistics
 from datetime import datetime
@@ -39,7 +40,7 @@ class Environment:
     NEW_Q_TABLE = True  # True if we want to start new training, False if we want to use existing file.
     EXPERIMENT_NAME = 'steady_epsilon'
     FILENAME = f"reward_data_{MAX_ITERATIONS}_{MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"  # Name of the q-table in case we LOAD the data (for testing).
-    IP_ADDRESS = '192.168.1.3'
+    IP_ADDRESS = os.environ['IP_ADRES']
 
     EPSILON_LOW = .6  # Start epsilon value. This gradually increases.
     EPSILON_HIGH = .99  # End epsilon value
