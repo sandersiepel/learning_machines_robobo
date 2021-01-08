@@ -32,8 +32,8 @@ class Direction:
 
 class Environment:
     # All of our constants, prone to change.
-    MAX_ITERATIONS = 20  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 150  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_ITERATIONS = 50  # Amount of simulations until termination.
+    MAX_SIMULATION_ITERATIONS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
     NEW_Q_TABLE = True  # True if we want to start new training, False if we want to use existing file.
