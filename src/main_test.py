@@ -39,7 +39,7 @@ class Environment:
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
     NEW_Q_TABLE = True  # True if we want to start new training, False if we want to use existing file.
-    EXPERIMENT_NAME = 'test_collision'
+    EXPERIMENT_NAME = 'static_epsilon'
     FILENAME = f"results/reward_data_{MAX_ITERATIONS}_{MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"  # Name of the q-table in case we LOAD the data (for testing).
     IP_ADDRESS = os.environ['IP_ADDRESS']
 
@@ -277,6 +277,7 @@ def main():
                 os.makedirs(f'results/{env.EXPERIMENT_NAME}')
             epsilon_low = env.EPSILON_LOW
             for i in range(N_RUNS):
+                print(f"Begin experiment {i+1}/{N_RUNS}")
                 env.EPSILON_LOW = epsilon_low
                 env.EXPERIMENT_COUNTER += 1
                 # TODO also store q-table per experiment

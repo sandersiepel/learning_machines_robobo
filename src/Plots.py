@@ -17,6 +17,7 @@ import numpy as np
 # epsilon = list(np.arange(0.6, 0.99, 0.0078))
 # stats2.plot_two_different_axis(stats2.get_average_reward_simulation(), epsilon, label1="average reward", label2="epsilon")
 
-exp = Experiment('test', 5, 100)
-exp.plot_experiment()
+exp1 = Experiment('static_epsilon', 50, 200, window=True, window_size=5)
+exp2 = Experiment('dynamic_epsilon', 50, 200, window=True, window_size=5)
+exp1.plot_two_experiments(exp2)
 
