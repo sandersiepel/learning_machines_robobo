@@ -258,6 +258,7 @@ def main():
             for i in range(N_RUNS):
                 env.EPSILON_LOW = epsilon_low
                 env.EXPERIMENT_COUNTER += 1
+                # TODO also store q-table per experiment
                 env.FILENAME = f"results/{env.EXPERIMENT_NAME}/reward_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{env.EXPERIMENT_NAME}_{env.EXPERIMENT_COUNTER}.pickle"
                 env.q_table = env.initialize_q_table()
                 env.start_environment()
