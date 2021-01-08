@@ -3,6 +3,8 @@ import numpy as np
 import pickle
 import os
 import copy
+import pandas as pd
+import seaborn as sns
 
 
 class Statistics:
@@ -23,6 +25,12 @@ class Statistics:
     def read_data(self, name):
         # This function is used to open a pickle file (the rewards from a training session) and load it.
         with open(f'results/reward_data_{self.max_simulation}_{self.max_iteration}_{name}.pickle', 'rb') as fp:
+            rewards = pickle.load(fp)
+        self.rewards = rewards
+
+    def read_experiment(self, name, number):
+        # This function is used to open a pickle file (the rewards from a training session) and load it.
+        with open(f'results/{name}/reward_data_{self.max_simulation}_{self.max_iteration}_{name}_{number}.pickle', 'rb') as fp:
             rewards = pickle.load(fp)
         self.rewards = rewards
 
@@ -130,4 +138,22 @@ class Statistics:
         ax2.legend(lns, labs, loc=0)
 
         plt.title(title)
+        plt.show()
+
+
+class Experiment:
+
+    def __init__(self, experiment_name, num_simulations, num_iterations, num_experiments=5):
+        self.df = pd.DataFrame(columns=["Reward","Run"])
+        for i in range(num_experiments):
+            stat = Statistics(num_simulations, num_iterations)
+            stat.read_experiment(experiment_name, i+1)
+            df2 = pd.DataFrame(stat.get_average_reward_simulation(),columns=["Reward"])
+            df2['Run'] = i+1
+            df2['Simulation'] = df2.index + 1
+            self.df = self.df.append(df2, ignore_index=True)
+
+    def plot_experiment(self, title="Average over 5 runs with its std"):
+        ax = sns.lineplot(data=self.df, x="Simulation", y="Reward")
+        ax.set_title(title)
         plt.show()
