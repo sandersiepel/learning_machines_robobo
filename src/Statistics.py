@@ -20,15 +20,15 @@ class Statistics:
         self.max_simulation = max_simulation
         self.max_iteration = max_iteration
 
-    def read_data(self):
+    def read_data(self, name):
         # This function is used to open a pickle file (the rewards from a training session) and load it.
-        with open(f'results/reward_data_{self.max_simulation}_{self.max_iteration}.pickle', 'rb') as fp:
+        with open(f'results/reward_data_{self.max_simulation}_{self.max_iteration}_{name}.pickle', 'rb') as fp:
             rewards = pickle.load(fp)
         self.rewards = rewards
 
-    def save_rewards(self):
+    def save_rewards(self, name):
         # This function is used to save the accumulated rewards during training in a pickle file.
-        with open(f'results/reward_data_{self.max_simulation}_{self.max_iteration}.pickle', 'wb') as fp:
+        with open(f'results/reward_data_{self.max_simulation}_{self.max_iteration}_{name}.pickle', 'wb') as fp:
             pickle.dump(self.rewards, fp)
 
     def add_reward(self, simulation, iteration, reward):

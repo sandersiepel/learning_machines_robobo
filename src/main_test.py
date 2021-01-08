@@ -18,7 +18,8 @@ from tqdm import tqdm, trange
 # If you want to test a Q-table (in pickle format), set MODE = "TEST". If you want to train a new/given Q-table,
 # set MODE = "train". If you use "train" you can select either NEW_Q_TABLE = True or False in the Environment class.
 MODE = "train"
-TEST_FILENAME = "results/q_table_100_250.pickle"  # Structure should be /src/results.
+#TODO change to include test name
+TEST_FILENAME = "results/q_table_50_200.pickle"  # Structure should be /src/results.
 
 
 class Direction:
@@ -31,18 +32,18 @@ class Direction:
 
 class Environment:
     # All of our constants, prone to change.
-    MAX_ITERATIONS = 100  # Amount of simulations until termination.
+    MAX_ITERATIONS = 50  # Amount of simulations until termination.
     MAX_SIMULATION_ITERATIONS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
     NEW_Q_TABLE = True  # True if we want to start new training, False if we want to use existing file.
-    FILENAME = "reward_data50_200.pickle"  # Name of the q-table in case we LOAD the data (for testing).
-    IP_ADDRESS = '192.168.2.25'
+    EXPERIMENT_NAME = 'steady_epsilon'
+    FILENAME = f"reward_data_{MAX_ITERATIONS}_{MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"  # Name of the q-table in case we LOAD the data (for testing).
+    IP_ADDRESS = '192.168.1.3'
 
     EPSILON_LOW = .6  # Start epsilon value. This gradually increases.
     EPSILON_HIGH = .99  # End epsilon value
     EPSILON_INCREASE = .01  # How much should we increase the epsilon value with, each time?
-
     COLLISION_THRESHOLD = 100  # After how many collision actions should we reset the environment? Prevents rob getting stuck.
 
     action_space = [0, 1, 2, 3, 4]  # All of our available actions. Find definitions in the Direction class.
@@ -215,7 +216,10 @@ class Environment:
         # This function checks whether rob is close to something or not. If it's close (about to collide), return True
         # It also keeps track of the collision counter. If this counter exceeds its threshold (COLLISION_THRESHOLD)
         # then the environment should reset (to avoid rob getting stuck).
-        sensor_values = self.rob.read_irs()[3:]  # Should be absolute values (no log or anything).
+        try:
+            sensor_values = self.rob.read_irs()[3:]  # Should be absolute values (no log or anything).
+        except:
+            sensor_values = [0,0,0,0,0]
         collision = any([0 < i < self.collision_boundary for i in sensor_values])
 
         if collision:
@@ -287,7 +291,7 @@ def main():
     env = Environment()
     if MODE == "train":
         env.start_environment()
-        env.stats.save_rewards()
+        env.stats.save_rewards(env.FILENAME)
         # print(env.calculate_state_distribution())  # TODO: remove this
         # env.calculate_state_distribution2()  # TODO: remove this
     elif MODE == "test":
