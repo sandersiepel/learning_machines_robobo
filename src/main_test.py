@@ -21,25 +21,25 @@ from tqdm import tqdm, trange
 MODE = "train"
 MULTIPLE_RUNS = False  # doing an experiment multiple times
 N_RUNS = 5  # how many times an experiment is done if MULTIPLE_RUNS is set to True
-TEST_FILENAME = "results/q_table_10_500.pickle"  # The name of the test Q-table if MODE = "test"
+TEST_FILENAME = "results/q_table_500_250.pickle"  # The name of the test Q-table if MODE = "test"
 
 
 class Direction:
-    LEFT = (-25, 25, 300)  # Action: 0
-    RIGHT = (25, -25, 300)  # Action: 1
+    LEFT = (-15, 15, 300)  # Action: 0
+    RIGHT = (15, -15, 300)  # Action: 1
     FORWARD = (25, 25, 300)  # Action: 2
-    RRIGHT = (50, -50, 300)  # Action: 3
-    LLEFT = (-50, 50, 300)  # Action: 4
+    RRIGHT = (25, -25, 300)  # Action: 3
+    LLEFT = (-25, 25, 300)  # Action: 4
 
 
 class Environment:
     # All of our constants, prone to change.
-    MAX_ITERATIONS = 500  # Amount of simulations until termination.
+    MAX_ITERATIONS = 50  # Amount of simulations until termination.
     MAX_SIMULATION_ITERATIONS = 250  # Amount of actions within one simulation. Actions = Q-table updates.
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
     NEW_Q_TABLE = True  # True if we want to start new training, False if we want to use existing file.
-    EXPERIMENT_NAME = 'randomExperiment'
+    EXPERIMENT_NAME = 'changedActions'
     FILENAME = f"results/reward_data_{MAX_ITERATIONS}_{MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"  # Name of the q-table in case we LOAD the data (for testing).
     IP_ADDRESS = os.environ['IP_ADDRESS']
 
@@ -106,14 +106,10 @@ class Environment:
             pickle.dump(self.q_table, fp)
 
     def best_action_for_state(self, state):
+        # Given a state (tuple format), what is the best action we take, i.e. for which action is the Q-value highest?
         q_row = self.q_table[state]
-        max_val = max(q_row)
-        max_val_indices = [i for i, j in enumerate(q_row) if j == max_val]
-
-        if len(max_val_indices) > 1:  # If we have multiple max values...
-            best_action = random.choice(max_val_indices)
-        else:
-            best_action = np.argmax(q_row)
+        max_val_indices = [i for i, j in enumerate(q_row) if j == max(q_row)]
+        best_action = random.choice(max_val_indices) if len(max_val_indices) > 1 else np.argmax(q_row)
 
         return best_action
 
@@ -231,9 +227,9 @@ class Environment:
                 reward += 2
         elif action == 2:  # Action is moving forward.
             if collision == "far":
-                reward -= 1
-            elif collision == "close":
                 reward -= 3
+            elif collision == "close":
+                reward -= 5
             elif collision == "nothing":
                 reward += 3
 
