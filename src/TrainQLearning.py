@@ -116,6 +116,7 @@ class Environment:
     def determine_action(self, curr_state):
         return random.choice(self.action_space) if random.random() < (1 - self.EPSILON_LOW) else self.best_action_for_state(curr_state)
 
+    @staticmethod
     def terminate_program(self, test1, test2):
         # Only do this for training and not for testing, to avoid overwriting a valid Q-table.
         print(f"Ctrl-C received, terminating program.")
@@ -137,7 +138,6 @@ class Environment:
         if self.epsilon_counter == self.epsilon_increase:
             if self.EPSILON_LOW < self.EPSILON_HIGH:
                 self.EPSILON_LOW += self.EPSILON_INCREASE
-                # print(f"Increasing epsilon to {self.EPSILON_LOW}")
                 self.epsilon_counter = 0
         else:
             self.epsilon_counter += 1
@@ -146,7 +146,7 @@ class Environment:
         # Initialize Q-table for states * action pairs with default values (0).
         # Since observation space is very large, we need to trim it down (bucketing) to only a select amount of
         # possible states, e.g. 4 for each sensor (4^8 = 65k). Or: use less sensors (no rear sensors for task 1).
-        # The size (5, 5, 5, 5, 5) denotes each sensor, with its amount of possible states (see func handle_state).
+        # E.g. the size (5, 5, 5, 5, 5) denotes each sensor, with its amount of possible states (see func handle_state).
         return np.random.uniform(low=-.1, high=.1, size=([3, 3, 3, 3, 3] + [len(self.action_space)]))
 
     def handle_state(self):
@@ -179,8 +179,7 @@ class Environment:
         # This function should accept an action (0, 1, 2...) and move the robot accordingly (left, right, forward).
         # It returns two things: new_state, which is the state (in tuple format) after this action has been performed.
         # and reward, which is the reward from this action.
-
-        collision = self.collision()  # Do we collide, returns booleans for front/back collision.
+        collision = self.collision()  # Do we collide, returns either "nothing", "far" or "close"
         reward = self.determine_reward(collision, action)
 
         if action == 0:
@@ -221,8 +220,7 @@ class Environment:
         return reward
 
     def collision(self):
-        # This function checks whether rob is close to something or not. It returns True if it's about to collide with
-        # another object. Also returns the "distance", either "close", "far" or "nothing".
+        # This function checks whether rob is close to something or not. It returns the "distance", either "close", "far" or "nothing".
         # It also keeps track of the collision counter. If this counter exceeds its threshold (COLLISION_THRESHOLD)
         # then the environment should reset (to avoid rob getting stuck).
         try:
@@ -245,8 +243,6 @@ class Environment:
     def update_q_table(self, best_action, curr_state):
         # This function updates the Q-table accordingly to the current state of rob.
         # First, we determine the new state we end in if we would play our current best action, given our current state.
-        # print(f"State: {curr_state}")
-        # print(f"Old q-row: {self.q_table[curr_state]} (playing action {best_action})")
         new_state, reward = self.handle_action(best_action)
 
         # Then we calculate the reward we would get in this new state.
@@ -258,14 +254,9 @@ class Environment:
         # Calculate the new Q-value with the common formula
         new_q = (1 - self.LEARNING_RATE) * current_q + self.LEARNING_RATE * (reward + self.DISCOUNT_FACTOR * max_future_q)
 
-        # print(f"Current state: {curr_state} with Q-values: {self.q_table[curr_state]}. \n"
-        #       f"If we play our best/random action {best_action}, we end up in new state: {new_state} with Q-values: {self.q_table[new_state]}.\n"
-        #       f"We now receive reward {reward}, the Q-value for current state is updates from {current_q} to {new_q}\n"
-        #       f"The max future reward is: {max_future_q}. Current epsilon value is: {self.EPSILON_LOW}\n")
-
         # And lastly, update the value in the Q-table.
         self.q_table[curr_state][best_action] = new_q
-        # print(f"New q-row: {self.q_table[curr_state]}\n")
+
         return reward
 
 
@@ -279,6 +270,7 @@ def main():
 
         epsilon_low = env.EPSILON_LOW
         global EXPERIMENT_COUNTER
+
         for i in range(N_RUNS):
             print(f"Begin experiment {i+1}/{N_RUNS}")
             env.EPSILON_LOW = epsilon_low
