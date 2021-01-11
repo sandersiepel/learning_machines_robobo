@@ -15,7 +15,7 @@ from datetime import datetime
 import seaborn as sns
 from tqdm import tqdm, trange
 import socket
-from main_test import Environment
+from TrainQLearning import Environment
 
 
 FILENAME = "results/q_table_50_300.pickle"

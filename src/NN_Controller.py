@@ -15,30 +15,8 @@ from datetime import datetime
 import seaborn as sns
 from tqdm import tqdm, trange
 import socket
+from Population import Controller, Population, Individual
 
-class controller():
-    N_HIDDEN = 10
-    N_OUTPUT = 2
-
-    def sigmoid(self, matrix):
-        newValues = np.empty(matrix.shape)
-        for i in range(len(newValues)):
-            newValues[i] = 1/(1+np.exp(-matrix[i]))
-        return newValues
-
-    def forward(self, irs_input, weights):
-        bias1 = weights[:self.N_HIDDEN].reshape(1, self.N_HIDDEN)
-
-        weight1_slice = len(irs_input) * self.N_HIDDEN + self.N_HIDDEN
-        weight1 = weights[self.N_HIDDEN:weight1_slice].reshape((len(irs_input), self.N_HIDDEN))
-
-        bias2 = weights[weight1_slice:weight1_slice + self.N_OUTPUT].reshape(1, self.N_OUTPUT)
-        weight2 = weights[weight1_slice + self.N_OUTPUT:].reshape((self.N_HIDDEN, self.N_OUTPUT))
-
-        output1 = self.sigmoid(irs_input.dot(weight1) + bias1)
-        output2 = output1.dot(weight2) + bias2
-
-        return output2[0]
 
 
 class Environment:
@@ -48,24 +26,28 @@ class Environment:
     hostname = socket.gethostname()
     IP_ADDRESS = socket.gethostbyname(hostname)
     POP_SIZE = 10
+    GEN_SIZE = 10
 
     def __init__(self):
         signal.signal(signal.SIGINT, self.terminate_program)
         self.rob = robobo.SimulationRobobo().connect(address=self.IP_ADDRESS, port=19997)
 
     def start_environment(self):
-        self.rob.wait_for_ping()
-        self.rob.play_simulation()
         n_w = 112
-        w = np.random.uniform(low=-1, high=1, size=(10, n_w))
-        self.con = controller()
+        pop = Population(self.POP_SIZE)
+        pop.create_new()
+        self.con = Controller()
 
-        for i in range(self.POP_SIZE):
-
-            ind_fitness = self.eval_ind(w[i])
-            print(ind_fitness)
-            self.rob.stop_world()
-            self.rob.wait_for_ping()
+        for j in range(self.GEN_SIZE):
+            for i in trange(self.POP_SIZE):
+                self.rob.wait_for_ping()
+                self.rob.play_simulation()
+                self.pos = self.rob.position()
+                pop.pop_list[i].fitness = self.eval_ind(pop.pop_list[i].weights)
+                self.rob.stop_world()
+                self.rob.wait_for_ping()
+            print(f"Generation {j}/{self.GEN_SIZE} avg: {pop.avg_fitness}, max: {pop.best_fitness}")
+            pop.next_gen()
 
 
     def terminate_program(self, test1, test2):
@@ -74,8 +56,9 @@ class Environment:
     def eval_ind(self, w):
         collsion_count = 0
         total_speed = 0
+        total_distance = 0
 
-        for i in trange(self.MAX_STEPS):
+        for i in range(self.MAX_STEPS):
             sensor_values = np.log(np.array(self.rob.read_irs())) / 10
 
             sensor_values = np.where(sensor_values == -np.inf, 0, sensor_values)  # Remove the infinite values.
@@ -90,8 +73,20 @@ class Environment:
 
             total_speed += self.check_forward(out)
 
-        return -(collsion_count * 10) + total_speed
+            total_distance += self.calc_distance()
 
+        return -(collsion_count * 10) + total_speed + total_distance
+
+    def calc_distance(self):
+        old_x = self.pos[0]
+        old_y = self.pos[1]
+        new_x = self.rob.position()[0]
+        new_y = self.rob.position()[1]
+
+        abs_x = abs(old_x - new_x)
+        abs_y = abs(old_y - new_y)
+
+        return np.sqrt((abs_x ** 2) + (abs_y ** 2))
 
     def collision(self):
         # This function checks whether rob is close to something or not. It returns True if it's about to collide with
@@ -109,8 +104,9 @@ class Environment:
         if collision_close:
             return True
 
-    def check_forward(self, output):
-        if output[0] - output[1] == 0:
+    @staticmethod
+    def check_forward(output):
+        if output[0] == output[1]:
             speed = output[0]
             return speed
         else:

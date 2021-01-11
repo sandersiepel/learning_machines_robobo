@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 from __future__ import print_function
-import time
 import numpy as np
 import robobo
 import sys
@@ -9,11 +8,7 @@ import prey
 import pickle
 import random
 import os
-import matplotlib.pyplot as plt
-import pprint
 from Statistics import Statistics
-from datetime import datetime
-import seaborn as sns
 from tqdm import tqdm, trange
 import socket
 
@@ -122,7 +117,7 @@ class Environment:
         print(f"Ctrl-C received, terminating program.")
 
         # TODO the self.store_q_table() should be called when training, and not when testing.
-        # self.store_q_table()
+        self.store_q_table()
         sys.exit(1)
 
     def valid_environment(self):
