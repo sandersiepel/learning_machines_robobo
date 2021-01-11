@@ -1,24 +1,8 @@
 from __future__ import print_function
-import time
-import numpy as np
-import robobo
-import sys
-import signal
-import prey
-import pickle
-import random
-import os
-import matplotlib.pyplot as plt
-import pprint
-from Statistics import Statistics
-from datetime import datetime
-import seaborn as sns
-from tqdm import tqdm, trange
-import socket
-from main_test import Environment
+from TrainQLearning import Environment
 
 
-FILENAME = "results/q_table_50_300.pickle"
+FILENAME = "results/q_table_20_200_test1.pickle"
 SIMULATIONS = 5
 ITERATIONS = 1_000
 

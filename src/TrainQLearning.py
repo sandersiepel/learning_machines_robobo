@@ -23,7 +23,7 @@ N_RUNS = 5  # How many times an experiment is done if MULTIPLE_RUNS = True.
 EXPERIMENT_COUNTER = 0  # Only needed for training over multiple experiments (MULTIPLE_RUNS = "True")
 
 # For each time training, give this a unique name so the data can be saved with a unique name.
-EXPERIMENT_NAME = 'testupdate'
+EXPERIMENT_NAME = 'test1'
 
 
 class Direction:
@@ -37,7 +37,7 @@ class Direction:
 class Environment:
     # All of our constants that together define a training set-up.
     MAX_ITERATIONS = 20  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 500  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_SIMULATION_ITERATIONS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
 
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
@@ -102,7 +102,7 @@ class Environment:
         return q_table
 
     def store_q_table(self):
-        with open(f"results/q_table_{self.MAX_ITERATIONS}_{self.MAX_SIMULATION_ITERATIONS}.pickle", 'wb') as fp:
+        with open(f"results/q_table_{self.MAX_ITERATIONS}_{self.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle", 'wb') as fp:
             pickle.dump(self.q_table, fp)
 
     def best_action_for_state(self, state):
@@ -275,13 +275,13 @@ def main():
             EXPERIMENT_COUNTER += 1
 
             # TODO (not necessary); also store q-table per experiment
-            env.FILENAME = f"results/{EXPERIMENT_NAME}/reward_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}_{EXPERIMENT_COUNTER}.pickle"
+            file_name = f"results/{EXPERIMENT_NAME}/reward_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}_{EXPERIMENT_COUNTER}.pickle"
             env.q_table = env.initialize_q_table()
             env.start_environment()
-            env.stats.save_rewards(env.FILENAME)
+            env.stats.save_rewards(file_name)
     else:
         env.start_environment()
-        env.stats.save_rewards(env.FILENAME)
+        env.stats.save_rewards(f"results/reward_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle")
 
 
 if __name__ == "__main__":
