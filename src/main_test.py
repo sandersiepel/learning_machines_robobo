@@ -15,11 +15,12 @@ from Statistics import Statistics
 from datetime import datetime
 import seaborn as sns
 from tqdm import tqdm, trange
+import socket
 
 # If you want to test a Q-table (in pickle format), set MODE = "TEST". If you want to train a new/given Q-table,
 # set MODE = "train". If you use "train" you can select either NEW_Q_TABLE = True or False in the Environment class.
 MODE = "train"
-MULTIPLE_RUNS = False  # doing an experiment multiple times
+MULTIPLE_RUNS = True  # doing an experiment multiple times
 N_RUNS = 5  # how many times an experiment is done if MULTIPLE_RUNS is set to True
 TEST_FILENAME = "results/q_table_500_250.pickle"  # The name of the test Q-table if MODE = "test"
 
@@ -39,9 +40,11 @@ class Environment:
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
     NEW_Q_TABLE = True  # True if we want to start new training, False if we want to use existing file.
-    EXPERIMENT_NAME = 'changedActions'
+    EXPERIMENT_NAME = 'old_actions'
     FILENAME = f"results/reward_data_{MAX_ITERATIONS}_{MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"  # Name of the q-table in case we LOAD the data (for testing).
-    IP_ADDRESS = os.environ['IP_ADDRESS']
+    # IP_ADDRESS = os.environ['IP_ADDRESS']
+    hostname = socket.gethostname()
+    IP_ADDRESS = socket.gethostbyname(hostname)
 
     EPSILON_LOW = 0.6  # Start epsilon value. This gradually increases.
     EPSILON_HIGH = 1  # End epsilon value
@@ -254,6 +257,7 @@ class Environment:
         elif collision_far:
             return "far"
         else:
+            self.collision_counter = 0
             return "nothing"
 
     def update_q_table(self, best_action, curr_state):
