@@ -187,12 +187,12 @@ class Environment:
             left, right, duration = Direction.LEFT  # Left, action 0
         elif action == 1:
             left, right, duration = Direction.RIGHT  # Right, action 1
-        elif action == 2:
-            left, right, duration = Direction.FORWARD
         elif action == 3:
-            left, right, duration = Direction.RRIGHT  # Backward right, action 3
+            left, right, duration = Direction.RRIGHT  # Extreme right, action 3
+        elif action == 4:
+            left, right, duration = Direction.LLEFT  # Extreme left, action 4
         else:
-            left, right, duration = Direction.LLEFT  # Backward left, action 4
+            left, right, duration = Direction.FORWARD  # Forward, action 2
 
         self.rob.move(left, right, duration)
         return self.handle_state(), reward  # New_state, reward
@@ -203,7 +203,6 @@ class Environment:
         # collide with an object within the environment.
         reward = 0
 
-        # Collision has two booleans, for front collision and back collision.
         if action in [0, 1, 3, 4]:  # Action is moving either left or right.
             if collision == "nothing":
                 reward -= 1
@@ -223,7 +222,7 @@ class Environment:
 
     def collision(self):
         # This function checks whether rob is close to something or not. It returns True if it's about to collide with
-        # another object.
+        # another object. Also returns the "distance", either "close", "far" or "nothing".
         # It also keeps track of the collision counter. If this counter exceeds its threshold (COLLISION_THRESHOLD)
         # then the environment should reset (to avoid rob getting stuck).
         try:
