@@ -3,6 +3,7 @@ import sys
 import random
 import pickle
 
+W_MULTIPLIER = 10
 
 class Controller:
     N_HIDDEN = 10
@@ -37,12 +38,12 @@ class Individual:
         self.fitness = -1000000
 
     def init_weights(self):
-        self.weights = np.random.uniform(low=-1, high=1, size=self.N_WEIGHTS)
+        self.weights = np.random.uniform(low=-W_MULTIPLIER, high=W_MULTIPLIER, size=self.N_WEIGHTS)
 
     def mutate_individual(self):
         for i in range(len(self.weights)):
             if random.random() < 10:
-                self.weights[i] = random.uniform(-1, 1)
+                self.weights[i] = random.uniform(-W_MULTIPLIER, W_MULTIPLIER)
 
     def __lt__(self, other):
         return self.fitness < other.fitness
@@ -71,9 +72,13 @@ class Population:
     def next_gen(self):
         self.pop_list.sort(reverse=True)
         best = self.pop_list[0]
+        second_best = self.pop_list[1]
+
         self.best_fitness = best.fitness
         self.store_best_weights(best)
-        second_best = self.pop_list[1]
+
+        self.calculate_avg_fitness()
+
         new_pop = []
         new_pop.append(best)
         new_pop.append(second_best)
@@ -89,7 +94,7 @@ class Population:
         for i in range(len(self.pop_list)):
             total += self.pop_list[i].fitness
         avg_fitness = total / len(self.pop_list)
-        return avg_fitness
+        self.avg_fitness = avg_fitness
 
     @staticmethod
     def store_best_weights(best):

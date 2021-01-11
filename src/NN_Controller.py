@@ -18,7 +18,6 @@ import socket
 from Population import Controller, Population, Individual
 
 
-
 class Environment:
     # All of our constants, prone to change.
     MAX_STEPS = 100  # Amount of actions within one simulation. Actions = Q-table updates.
@@ -39,28 +38,31 @@ class Environment:
         self.con = Controller()
 
         for j in range(self.GEN_SIZE):
-            for i in trange(self.POP_SIZE):
+            for i in range(self.POP_SIZE):
                 self.rob.wait_for_ping()
                 self.rob.play_simulation()
                 self.pos = self.rob.position()
-                pop.pop_list[i].fitness = self.eval_ind(pop.pop_list[i].weights)
+                fitness = self.eval_ind(pop.pop_list[i].weights)
+                pop.pop_list[i].fitness = fitness
+
                 self.rob.stop_world()
                 self.rob.wait_for_ping()
-            print(f"Generation {j}/{self.GEN_SIZE} avg: {pop.avg_fitness}, max: {pop.best_fitness}")
             pop.next_gen()
+            print(f"Generation {j}/{self.GEN_SIZE} avg: {pop.avg_fitness}, max: {pop.best_fitness}")
 
 
     def terminate_program(self, test1, test2):
         sys.exit(1)
 
     def eval_ind(self, w):
-        collsion_count = 0
+        collision_count = 0
         total_speed = 0
         total_distance = 0
+        total_fitness = 0
 
         for i in range(self.MAX_STEPS):
-            sensor_values = np.log(np.array(self.rob.read_irs())) / 10
 
+            sensor_values = np.log(np.array(self.rob.read_irs())) / 10
             sensor_values = np.where(sensor_values == -np.inf, 0, sensor_values)  # Remove the infinite values.
             sensor_values = (sensor_values - -0.65) / 0.65  # Scales all variables between [0, 1] where 0 is close proximity.
 
@@ -69,13 +71,19 @@ class Environment:
             self.rob.move(out[0], out[1], 300)
 
             if self.collision():
-                collsion_count += 1
+                collision_count += 1
 
             total_speed += self.check_forward(out)
 
             total_distance += self.calc_distance()
 
-        return -(collsion_count * 10) + total_speed + total_distance
+            s_trans = abs(out[0] + abs(out[1]))
+            s_rot = abs(out[0] - out[1]) / 200
+            v_sens = np.min(sensor_values)
+            total_fitness += s_trans * (1-s_rot) * v_sens
+
+        # return -(collision_count * 10) + total_speed + total_distance
+        return total_fitness
 
     def calc_distance(self):
         old_x = self.pos[0]
@@ -111,8 +119,6 @@ class Environment:
             return speed
         else:
             return -1
-
-
 
 
 env = Environment()
