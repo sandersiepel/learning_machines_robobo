@@ -9,11 +9,7 @@ import prey
 import pickle
 import random
 import os
-import matplotlib.pyplot as plt
-import pprint
 from Statistics import Statistics
-from datetime import datetime
-import seaborn as sns
 from tqdm import tqdm, trange
 import socket
 
@@ -275,13 +271,13 @@ def main():
             EXPERIMENT_COUNTER += 1
 
             # TODO (not necessary); also store q-table per experiment
-            file_name = f"results/{EXPERIMENT_NAME}/reward_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}_{EXPERIMENT_COUNTER}.pickle"
+            env.FILENAME = f"results/{EXPERIMENT_NAME}/reward_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}_{EXPERIMENT_COUNTER}.pickle"
             env.q_table = env.initialize_q_table()
             env.start_environment()
-            env.stats.save_rewards(file_name)
+            env.stats.save_rewards(env.FILENAME)
     else:
         env.start_environment()
-        env.stats.save_rewards(f"results/reward_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle")
+        env.stats.save_rewards(env.FILENAME)
 
 
 if __name__ == "__main__":
