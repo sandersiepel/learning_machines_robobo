@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import print_function
+import time
 import numpy as np
 import robobo
 import sys
@@ -18,7 +19,7 @@ N_RUNS = 5  # How many times an experiment is done if MULTIPLE_RUNS = True.
 EXPERIMENT_COUNTER = 0  # Only needed for training over multiple experiments (MULTIPLE_RUNS = "True")
 
 # For each time training, give this a unique name so the data can be saved with a unique name.
-EXPERIMENT_NAME = 'testFunction2'
+EXPERIMENT_NAME = 'test1'
 
 
 class Direction:
@@ -31,8 +32,8 @@ class Direction:
 
 class Environment:
     # All of our constants that together define a training set-up.
-    MAX_ITERATIONS = 50  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 300  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_ITERATIONS = 20  # Amount of simulations until termination.
+    MAX_SIMULATION_ITERATIONS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
 
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
@@ -97,7 +98,7 @@ class Environment:
         return q_table
 
     def store_q_table(self):
-        with open(f"results/q_table_{self.MAX_ITERATIONS}_{self.MAX_SIMULATION_ITERATIONS}.pickle", 'wb') as fp:
+        with open(f"results/q_table_{self.MAX_ITERATIONS}_{self.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle", 'wb') as fp:
             pickle.dump(self.q_table, fp)
 
     def best_action_for_state(self, state):
@@ -115,8 +116,6 @@ class Environment:
     def terminate_program(self, test1, test2):
         # Only do this for training and not for testing, to avoid overwriting a valid Q-table.
         print(f"Ctrl-C received, terminating program.")
-
-        # TODO the self.store_q_table() should be called when training, and not when testing.
         self.store_q_table()
         sys.exit(1)
 
