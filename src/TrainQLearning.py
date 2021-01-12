@@ -19,7 +19,7 @@ N_RUNS = 5  # How many times an experiment is done if MULTIPLE_RUNS = True.
 EXPERIMENT_COUNTER = 0  # Only needed for training over multiple experiments (MULTIPLE_RUNS = "True")
 
 # For each time training, give this a unique name so the data can be saved with a unique name.
-EXPERIMENT_NAME = 'test1'
+EXPERIMENT_NAME = 'newArena'
 
 
 class Direction:
@@ -32,8 +32,8 @@ class Direction:
 
 class Environment:
     # All of our constants that together define a training set-up.
-    MAX_ITERATIONS = 20  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_ITERATIONS = 200  # Amount of simulations until termination.
+    MAX_SIMULATION_ITERATIONS = 500  # Amount of actions within one simulation. Actions = Q-table updates.
 
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
@@ -196,11 +196,18 @@ class Environment:
         # collide with an object within the environment.
         reward = 0
 
-        if action in [0, 1, 3, 4]:  # Action is moving either left or right.
+        if action in [0, 1]:  # Action is moving either left or right.
             if collision == "nothing":
                 reward -= 1
             elif collision == "far":
                 reward += 1
+            elif collision == "close":
+                reward -= 1
+        elif action in [3, 4]:
+            if collision == "nothing":
+                reward -= 1
+            elif collision == "far":
+                reward -= 1
             elif collision == "close":
                 reward += 2
         elif action == 2:  # Action is moving forward.
