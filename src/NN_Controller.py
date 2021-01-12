@@ -37,6 +37,8 @@ class Environment:
         pop.create_new()
         self.con = Controller()
 
+        stats = Statistics(max_simulation=self.GEN_SIZE, max_iteration=2)
+
         for j in range(self.GEN_SIZE):
             for i in range(self.POP_SIZE):
                 self.rob.wait_for_ping()
@@ -48,7 +50,9 @@ class Environment:
                 self.rob.stop_world()
                 self.rob.wait_for_ping()
             pop.next_gen()
+            stats.add_fitness(pop.best_fitness, pop.avg_fitness, j)
             print(f"Generation {j+1}/{self.GEN_SIZE} avg: {pop.avg_fitness}, max: {pop.best_fitness}")
+        stats.save_rewards("EC_fitness")
 
 
     def terminate_program(self, test1, test2):
@@ -82,8 +86,8 @@ class Environment:
             v_sens = np.min(sensor_values)
             total_fitness += s_trans * (1-s_rot) * v_sens
 
-        # return -(collision_count * 10) + total_speed + total_distance
-        return total_fitness
+        return -(collision_count * 10) + total_speed + total_distance
+        # return total_fitness
 
     def calc_distance(self):
         old_x = self.pos[0]
@@ -114,7 +118,7 @@ class Environment:
 
     @staticmethod
     def check_forward(output):
-        if output[0] == output[1]:
+        if abs(output[0] - output[1]) < 1:
             speed = output[0]
             return speed
         else:

@@ -17,8 +17,13 @@ import numpy as np
 # epsilon = list(np.arange(0.6, 0.99, 0.0078))
 # stats2.plot_two_different_axis(stats2.get_average_reward_simulation(), epsilon, label1="average reward", label2="epsilon")
 
-exp1 = Experiment('new_actions', 50, 250, window=True, window_size=5, num_experiments=3)
+# exp1 = Experiment('new_actions', 50, 250, window=True, window_size=5, num_experiments=3)
 # exp1.plot_single_experiment(title="Old actions")
-exp2 = Experiment('old_actions', 50, 250, window=True, window_size=5, num_experiments=4)
-exp1.plot_two_experiments(exp2)
+# exp2 = Experiment('old_actions', 50, 250, window=True, window_size=5, num_experiments=4)
+# exp1.plot_two_experiments(exp2)
+
+stats = Statistics(5, 2)
+stats.read_fitness("EC_fitness")
+# stats.plot_data(stats.rewards)
+stats.plot_two_same_axis(stats.rewards[:, 0], stats.rewards[:, 1], label1="max_reward", label2="avg_reward")
 

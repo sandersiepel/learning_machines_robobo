@@ -5,7 +5,6 @@ import pickle
 import copy
 
 W_MULTIPLIER = 10
-# test = np.random.uniform(low=-W_MULTIPLIER, high=W_MULTIPLIER, size=112)
 
 class Controller:
     N_HIDDEN = 10
@@ -41,7 +40,6 @@ class Individual:
 
     def init_weights(self):
         self.weights = np.random.uniform(low=-W_MULTIPLIER, high=W_MULTIPLIER, size=self.N_WEIGHTS)
-        # self.weights = test
 
     def mutate_individual(self):
         for i in range(len(self.weights)):
@@ -79,9 +77,6 @@ class Population:
 
         self.best_fitness = best.fitness
         self.store_best_weights(best)
-
-        # print("best " + str(best.fitness))
-        # print("sbest " + str(second_best.fitness))
 
         self.calculate_avg_fitness()
 
