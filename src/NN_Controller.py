@@ -24,8 +24,8 @@ class Environment:
     EXPERIMENT_NAME = 'old_actions'
     hostname = socket.gethostname()
     IP_ADDRESS = socket.gethostbyname(hostname)
-    POP_SIZE = 10
-    GEN_SIZE = 10
+    POP_SIZE = 20
+    GEN_SIZE = 20
 
     def __init__(self):
         signal.signal(signal.SIGINT, self.terminate_program)
@@ -42,19 +42,19 @@ class Environment:
                 self.rob.wait_for_ping()
                 self.rob.play_simulation()
                 self.pos = self.rob.position()
-                fitness = self.eval_ind(pop.pop_list[i].weights)
+                fitness = self.eval_ind(pop.pop_list[i])
                 pop.pop_list[i].fitness = fitness
 
                 self.rob.stop_world()
                 self.rob.wait_for_ping()
             pop.next_gen()
-            print(f"Generation {j}/{self.GEN_SIZE} avg: {pop.avg_fitness}, max: {pop.best_fitness}")
+            print(f"Generation {j+1}/{self.GEN_SIZE} avg: {pop.avg_fitness}, max: {pop.best_fitness}")
 
 
     def terminate_program(self, test1, test2):
         sys.exit(1)
 
-    def eval_ind(self, w):
+    def eval_ind(self, ind):
         collision_count = 0
         total_speed = 0
         total_distance = 0
@@ -66,7 +66,7 @@ class Environment:
             sensor_values = np.where(sensor_values == -np.inf, 0, sensor_values)  # Remove the infinite values.
             sensor_values = (sensor_values - -0.65) / 0.65  # Scales all variables between [0, 1] where 0 is close proximity.
 
-            out = self.con.forward(sensor_values, w)
+            out = self.con.forward(sensor_values, ind.weights)
 
             self.rob.move(out[0], out[1], 300)
 
