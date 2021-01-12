@@ -2,8 +2,10 @@ import numpy as np
 import sys
 import random
 import pickle
+import copy
 
 W_MULTIPLIER = 10
+# test = np.random.uniform(low=-W_MULTIPLIER, high=W_MULTIPLIER, size=112)
 
 class Controller:
     N_HIDDEN = 10
@@ -39,6 +41,7 @@ class Individual:
 
     def init_weights(self):
         self.weights = np.random.uniform(low=-W_MULTIPLIER, high=W_MULTIPLIER, size=self.N_WEIGHTS)
+        # self.weights = test
 
     def mutate_individual(self):
         for i in range(len(self.weights)):
@@ -49,7 +52,7 @@ class Individual:
         return self.fitness < other.fitness
 
     def create_with_parents(self, parent1, parent2):
-        self.weights = parent1.weights
+        self.weights = copy.deepcopy(parent1.weights)
         for i in range(len(self.weights)):
             if random.random() < 50:
                 self.weights[i] = parent2.weights[i]
@@ -77,14 +80,17 @@ class Population:
         self.best_fitness = best.fitness
         self.store_best_weights(best)
 
+        # print("best " + str(best.fitness))
+        # print("sbest " + str(second_best.fitness))
+
         self.calculate_avg_fitness()
 
-        new_pop = []
-        new_pop.append(best)
-        new_pop.append(second_best)
+        new_pop = [best, second_best]
+
         for i in range(self.size - 2):
             ind = Individual()
             ind.create_with_parents(best, second_best)
+            # ind.init_weights()
             ind.mutate_individual()
             new_pop.append(ind)
         self.pop_list = new_pop
