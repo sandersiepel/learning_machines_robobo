@@ -4,17 +4,24 @@ import random
 import pickle
 import copy
 
-W_MULTIPLIER = 10
+W_MULTIPLIER = 1
 
 class Controller:
+    N_INPUT = 8
     N_HIDDEN = 10
-    N_OUTPUT = 2
+    N_OUTPUT = 5
 
-    def sigmoid(self, matrix):
+    @staticmethod
+    def sigmoid(matrix):
         newValues = np.empty(matrix.shape)
         for i in range(len(newValues)):
             newValues[i] = 1/(1+np.exp(-matrix[i]))
         return newValues
+
+    @staticmethod
+    def softmax(matrix):
+        exponents = np.exp(matrix - np.max(matrix))
+        return exponents / np.sum(exponents)
 
     def forward(self, irs_input, weights):
         bias1 = weights[:self.N_HIDDEN].reshape(1, self.N_HIDDEN)
@@ -26,13 +33,13 @@ class Controller:
         weight2 = weights[weight1_slice + self.N_OUTPUT:].reshape((self.N_HIDDEN, self.N_OUTPUT))
 
         output1 = self.sigmoid(irs_input.dot(weight1) + bias1)
-        output2 = output1.dot(weight2) + bias2
+        output2 = self.softmax(output1.dot(weight2) + bias2)
 
         return output2[0]
 
 
 class Individual:
-    N_WEIGHTS = 112
+    N_WEIGHTS = (Controller.N_INPUT+1)*Controller.N_HIDDEN + (Controller.N_HIDDEN+1)*Controller.N_OUTPUT
 
     def __init__(self):
         self.weights = []
@@ -49,10 +56,11 @@ class Individual:
     def __lt__(self, other):
         return self.fitness < other.fitness
 
-    def create_with_parents(self, parent1, parent2):
-        self.weights = copy.deepcopy(parent1.weights)
+    def initialize_with_parents(self, parent1, parent2):
         for i in range(len(self.weights)):
             if random.random() < 50:
+                self.weights[i] = parent1.weights[i]
+            else:
                 self.weights[i] = parent2.weights[i]
 
 
@@ -80,15 +88,9 @@ class Population:
 
         self.calculate_avg_fitness()
 
-        new_pop = [best, second_best]
-
-        for i in range(self.size - 2):
-            ind = Individual()
-            ind.create_with_parents(best, second_best)
-            # ind.init_weights()
-            ind.mutate_individual()
-            new_pop.append(ind)
-        self.pop_list = new_pop
+        for i in range(2, len(self.pop_list)):
+            self.pop_list[i].initialize_with_parents(best, second_best)
+            self.pop_list[i].mutate_individual()
 
     def calculate_avg_fitness(self):
         total = 0

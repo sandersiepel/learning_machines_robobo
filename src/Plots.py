@@ -25,5 +25,6 @@ import numpy as np
 stats = Statistics(5, 2)
 stats.read_fitness("EC_fitness")
 # stats.plot_data(stats.rewards)
-stats.plot_two_same_axis(stats.rewards[:, 0], stats.rewards[:, 1], label1="max_reward", label2="avg_reward")
+stats.plot_two_same_axis(stats.rewards[:, 0], stats.rewards[:, 1], label1="max_reward", label2="avg_reward",
+                         x_label="Generation", title="Average and maximum fitness with weights ranging from -40 till 40", y_label="Fitness")
 
