@@ -28,6 +28,12 @@ class Statistics:
             rewards = pickle.load(fp)
         self.rewards = rewards
 
+    def read_fitness(self, name):
+        # This function is used to open a pickle file (the rewards from a training session) and load it.
+        with open(name, 'rb') as fp:
+            rewards = pickle.load(fp)
+        self.rewards = rewards
+
     def read_experiment(self, name, number):
         # This function is used to open a pickle file (the rewards from a training session) and load it.
         with open(f'results/{name}/reward_data_{self.max_simulation}_{self.max_iteration}_{name}_{number}.pickle', 'rb') as fp:
@@ -40,18 +46,26 @@ class Statistics:
             pickle.dump(self.rewards, fp)
 
     def add_reward(self, simulation, iteration, reward):
+        # This function adds a reward to the simulation object
         self.rewards[simulation][iteration] = reward
 
+    def add_fitness(self, max_fitness, avg_fitness, generation):
+        self.rewards[generation][0] = max_fitness
+        self.rewards[generation][1] = avg_fitness
+
     def get_rewards(self):
+        # This function returns all rewards
         return self.rewards
 
     def get_average_reward_simulation(self):
+        # This function returns the average reward per simulation
         avg_reward = []
         for i in range(len(self.rewards)):
             avg_reward.append(np.mean(self.rewards[i]))
         return avg_reward
 
     def get_total_reward_simulation(self):
+        # This function returns the total reward per simulation
         sum_reward = []
         for i in range(len(self.rewards)):
             sum_reward.append(np.sum(self.rewards[i]))
