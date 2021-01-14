@@ -35,7 +35,7 @@ class Direction:
 class Environment:
     # All of our constants that together define a training set-up.
     MAX_ITERATIONS = 500  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 20  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_SIMULATION_ITERATIONS = 500  # Amount of actions within one simulation. Actions = Q-table updates.
 
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
@@ -48,7 +48,7 @@ class Environment:
     COLLISION_THRESHOLD = 100  # After how many collision actions should we reset the environment? Prevents rob getting stuck.
 
     action_space = [0, 1, 2, 3, 4]  # All of our available actions. Find definitions in the Direction class.
-    collision_counter, iteration_counter, epsilon_counter = 0, 0, 0
+    collision_counter, iteration_counter, epsilon_counter, physical_collision_counter = 0, 0, 0, 0
 
     # The epsilon_increase determines when the epsilon should be increased. This happens gradually from EPSILON_LOW
     # to EPSILON_HIGH during the amount of allowed iterations. So when MAX_ITERATIONS reaches its limit, so does
@@ -60,6 +60,9 @@ class Environment:
         self.rob = robobo.SimulationRobobo().connect(address=self.IP_ADDRESS, port=19997)
         self.stats = Statistics(self.MAX_ITERATIONS, self.MAX_SIMULATION_ITERATIONS)
         self.q_table = self.initialize_q_table()
+
+        # Initialize the collision handle for collision detection. Requires a "collision" class in V-REP.
+        _, self.collision_handle = vrep.simxGetCollisionHandle(self.rob._clientID, 'Collision', vrep.simx_opmode_blocking)
 
     def start_environment(self):
         # Initialize the start position handles + the robot handle
@@ -93,6 +96,7 @@ class Environment:
                 # Reset the counters
                 self.iteration_counter = 0
                 self.collision_counter = 0
+                self.physical_collision_counter = 0
 
                 self.rob.stop_world()
                 self.rob.wait_for_ping()  # Maybe we should wait for ping so we avoid errors. Might not be necessary.
@@ -197,6 +201,7 @@ class Environment:
         # It returns two things: new_state, which is the state (in tuple format) after this action has been performed.
         # and reward, which is the reward from this action.
         collision = self.collision()  # Do we collide, returns either "nothing", "far" or "close"
+        collision2 = self.physical_collision()
         reward = self.determine_reward(collision, action)
 
         if action == 0:
@@ -263,6 +268,13 @@ class Environment:
         else:
             self.collision_counter = 0
             return "nothing"
+
+    def physical_collision(self):
+        # This function checks for physical collision that is not based on the sensors, but on an object around the Robot
+        # in V-REP.
+        [_, collision_state] = vrep.simxReadCollision(self.rob._clientID, self.collision_handle, vrep.simx_opmode_streaming)
+
+        return collision_state
 
     def update_q_table(self, best_action, curr_state):
         # This function updates the Q-table accordingly to the current state of rob.
