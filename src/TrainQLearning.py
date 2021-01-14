@@ -15,12 +15,12 @@ from tqdm import tqdm, trange
 import socket
 
 
-MULTIPLE_RUNS = True  # Doing an experiment multiple times, not required for normal training.
+MULTIPLE_RUNS = False  # Doing an experiment multiple times, not required for normal training.
 N_RUNS = 5  # How many times an experiment is done if MULTIPLE_RUNS = True.
 EXPERIMENT_COUNTER = 0  # Only needed for training over multiple experiments (MULTIPLE_RUNS = "True")
 
 # For each time training, give this a unique name so the data can be saved with a unique name.
-EXPERIMENT_NAME = 'test'
+EXPERIMENT_NAME = 'RecordExperiment'
 
 
 class Direction:
@@ -34,8 +34,8 @@ class Direction:
 # noinspection PyProtectedMember
 class Environment:
     # All of our constants that together define a training set-up.
-    MAX_ITERATIONS = 5  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 100  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_ITERATIONS = 100  # Amount of simulations until termination.
+    MAX_SIMULATION_ITERATIONS = 20  # Amount of actions within one simulation. Actions = Q-table updates.
 
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
@@ -53,7 +53,7 @@ class Environment:
     # The epsilon_increase determines when the epsilon should be increased. This happens gradually from EPSILON_LOW
     # to EPSILON_HIGH during the amount of allowed iterations. So when MAX_ITERATIONS reaches its limit, so does
     # the epsilon value.
-    epsilon_increase = int(((MAX_ITERATIONS * MAX_SIMULATION_ITERATIONS) // (EPSILON_HIGH - EPSILON_LOW) * 100) / 10_000)
+    epsilon_increase = int((((MAX_ITERATIONS * MAX_SIMULATION_ITERATIONS) // (EPSILON_HIGH - EPSILON_LOW) * 100) / 10_000) * 0.7)
 
     def __init__(self):
         signal.signal(signal.SIGINT, self.terminate_program)
