@@ -103,6 +103,7 @@ class Statistics:
         """
 
         data = self.get_average_reward_simulation()
+        # data = self.collision
         padded_data = copy.deepcopy(data)
         window_data = []
         pad_size = (window_size - 1) // 2
@@ -181,6 +182,9 @@ class Experiment:
 
     def __init__(self, experiment_name, num_simulations, num_iterations, num_experiments=5, window=False,
                  window_size=5):
+        """
+        Reads multiple experiments into one dataframe
+        """
         self.df = pd.DataFrame(columns=["Reward", "Run"])
         for i in range(num_experiments):
             stat = Statistics(num_simulations, num_iterations)
@@ -188,10 +192,10 @@ class Experiment:
             if window:
                 df2 = pd.DataFrame(stat.get_data_rolling_window(window_size), columns=["Reward"])
             else:
-                # df2 = pd.DataFrame(stat.get_average_reward_simulation(), columns=["Reward"])
-                df2 = pd.DataFrame(stat.get_total_reward_simulation(), columns=["Reward"])
-            # print(stat.collision.shape)
+                df2 = pd.DataFrame(stat.get_average_reward_simulation(), columns=["Reward"])
+                # df2 = pd.DataFrame(stat.get_total_reward_simulation(), columns=["Reward"])
             df2["collision"] = stat.collision
+            # df2["collision"] = stat.get_data_rolling_window(5)
             df2['Run'] = i+1
             df2['Simulation'] = df2.index + 1
             df2['experiment_name'] = experiment_name

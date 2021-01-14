@@ -16,11 +16,11 @@ import socket
 
 
 MULTIPLE_RUNS = True  # Doing an experiment multiple times, not required for normal training.
-N_RUNS = 5  # How many times an experiment is done if MULTIPLE_RUNS = True.
+N_RUNS = 2  # How many times an experiment is done if MULTIPLE_RUNS = True.
 EXPERIMENT_COUNTER = 0  # Only needed for training over multiple experiments (MULTIPLE_RUNS = "True")
 
 # For each time training, give this a unique name so the data can be saved with a unique name.
-EXPERIMENT_NAME = 'test'
+EXPERIMENT_NAME = 'train_week1'
 
 
 class Direction:
@@ -34,8 +34,8 @@ class Direction:
 # noinspection PyProtectedMember
 class Environment:
     # All of our constants that together define a training set-up.
-    MAX_ITERATIONS = 5  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 100  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_ITERATIONS = 100  # Amount of simulations until termination.
+    MAX_SIMULATION_ITERATIONS = 500  # Amount of actions within one simulation. Actions = Q-table updates.
 
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
@@ -69,7 +69,7 @@ class Environment:
         robot, handles = self.initialize_handles()
 
         for i in trange(self.MAX_ITERATIONS):  # Nifty, innit?
-            print(f"Starting simulation nr. {i+1}/{self.MAX_ITERATIONS}. Epsilon: {self.EPSILON_LOW}. Q-table size: {self.q_table.size}")
+            # print(f"Starting simulation nr. {i+1}/{self.MAX_ITERATIONS}. Epsilon: {self.EPSILON_LOW}. Q-table size: {self.q_table.size}")
 
             # Each new simulation, find a new (random) start position based on the provided handles.
             start_pos, robot = self.determine_start_position(handles, robot)
