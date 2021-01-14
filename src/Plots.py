@@ -1,11 +1,11 @@
 from Statistics import Statistics, Experiment
 import numpy as np
 
-stats1 = Statistics(20, 300)
-
-stats1.read_data("testSpawn")
-stats1.read_collision("testSpawn")
-stats1.plot_two_different_axis(stats1.get_average_reward_simulation(), stats1.collision)
+# stats1 = Statistics(5, 100)
+#
+# stats1.read_data("test")
+# stats1.read_collision("test")
+# stats1.plot_two_different_axis(stats1.get_average_reward_simulation(), stats1.collision)
 
 # stats2 = Statistics(50, 200)
 # name2 = "dynamic_epsilon"
@@ -21,8 +21,8 @@ stats1.plot_two_different_axis(stats1.get_average_reward_simulation(), stats1.co
 # epsilon = list(np.arange(0.6, 0.99, 0.0078))
 # stats2.plot_two_different_axis(stats2.get_average_reward_simulation(), epsilon, label1="average reward", label2="epsilon")
 
-# exp1 = Experiment('new_actions', 50, 250, window=True, window_size=5, num_experiments=3)
-# exp1.plot_single_experiment(title="Old actions")
+exp1 = Experiment('test', 5, 100, window=False, num_experiments=5)
+exp1.plot_single_experiment(title="Old actions")
 # exp2 = Experiment('old_actions', 50, 250, window=True, window_size=5, num_experiments=4)
 # exp1.plot_two_experiments(exp2)
 

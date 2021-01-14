@@ -324,14 +324,14 @@ def main():
             env.q_table = env.initialize_q_table()
             env.start_environment()
             env.stats.save_rewards(filename_rewards)
-            env.stats.save_rewards(filename_collision)
+            env.stats.save_collision(filename_collision)
             env.store_q_table(filename_q_table)
 
     else:
         env.start_environment()
         filename_rewards = f"results/reward_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
         filename_collision = f"results/collision_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
-        filename_q_table = f"results/collision_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
+        filename_q_table = f"results/q_table_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
         env.stats.save_rewards(filename_rewards)
         env.stats.save_collision(filename_collision)
         env.store_q_table(filename_q_table)

@@ -188,6 +188,8 @@ class Experiment:
                 df2 = pd.DataFrame(stat.get_data_rolling_window(window_size), columns=["Reward"])
             else:
                 df2 = pd.DataFrame(stat.get_average_reward_simulation(), columns=["Reward"])
+            # print(stat.collision.shape)
+            # df2["collision"] = stat.collision
             df2['Run'] = i+1
             df2['Simulation'] = df2.index + 1
             df2['experiment_name'] = experiment_name
