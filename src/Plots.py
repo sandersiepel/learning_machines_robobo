@@ -22,9 +22,9 @@ import numpy as np
 # exp2 = Experiment('old_actions', 50, 250, window=True, window_size=5, num_experiments=4)
 # exp1.plot_two_experiments(exp2)
 
-stats = Statistics(5, 2)
+stats = Statistics(40, 2)
+# stats.read_fitness("best_weights_20.pickle")
 stats.read_fitness("EC_fitness")
-# stats.plot_data(stats.rewards)
 stats.plot_two_same_axis(stats.rewards[:, 0], stats.rewards[:, 1], label1="max_reward", label2="avg_reward",
-                         x_label="Generation", title="Average and maximum fitness with weights ranging from -40 till 40", y_label="Fitness")
+                         x_label="Generation", title="Average and maximum fitness with EC", y_label="Fitness")
 
