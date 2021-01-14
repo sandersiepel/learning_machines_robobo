@@ -15,12 +15,12 @@ from tqdm import tqdm, trange
 import socket
 
 
-MULTIPLE_RUNS = False  # Doing an experiment multiple times, not required for normal training.
+MULTIPLE_RUNS = True  # Doing an experiment multiple times, not required for normal training.
 N_RUNS = 5  # How many times an experiment is done if MULTIPLE_RUNS = True.
 EXPERIMENT_COUNTER = 0  # Only needed for training over multiple experiments (MULTIPLE_RUNS = "True")
 
 # For each time training, give this a unique name so the data can be saved with a unique name.
-EXPERIMENT_NAME = 'testSpawn'
+EXPERIMENT_NAME = 'test'
 
 
 class Direction:
@@ -34,7 +34,7 @@ class Direction:
 # noinspection PyProtectedMember
 class Environment:
     # All of our constants that together define a training set-up.
-    MAX_ITERATIONS = 10  # Amount of simulations until termination.
+    MAX_ITERATIONS = 5  # Amount of simulations until termination.
     MAX_SIMULATION_ITERATIONS = 100  # Amount of actions within one simulation. Actions = Q-table updates.
 
     LEARNING_RATE = .1
@@ -91,7 +91,7 @@ class Environment:
                 self.change_epsilon()  # Check if we should increase epsilon or not.
                 self.iteration_counter += 1  # Keep track of how many actions this simulation does.
             else:
-                self.store_q_table()  # Save Q-table after each iteration because, why not.
+                # self.store_q_table()  # Save Q-table after each iteration because, why not.
                 self.stats.add_collision(i, self.physical_collision_counter)
                 # Reset the counters
                 self.iteration_counter = 0
@@ -108,8 +108,8 @@ class Environment:
             q_table = pickle.load(fp)
         return q_table
 
-    def store_q_table(self):
-        with open(f"results/q_table_{self.MAX_ITERATIONS}_{self.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle", 'wb') as fp:
+    def store_q_table(self, name):
+        with open(name, 'wb') as fp:
             pickle.dump(self.q_table, fp)
 
     def initialize_handles(self):
@@ -317,16 +317,24 @@ def main():
             EXPERIMENT_COUNTER += 1
 
             # TODO (not necessary); also store q-table per experiment
-            env.FILENAME = f"results/{EXPERIMENT_NAME}/reward_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}_{EXPERIMENT_COUNTER}.pickle"
+            exp_name = f"{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}_{EXPERIMENT_COUNTER}.pickle"
+            filename_rewards = f"results/{EXPERIMENT_NAME}/reward_data_" + exp_name
+            filename_collision = f"results/{EXPERIMENT_NAME}/collision_data_" + exp_name
+            filename_q_table = f"results/{EXPERIMENT_NAME}/q_table_data_" + exp_name
             env.q_table = env.initialize_q_table()
             env.start_environment()
-            env.stats.save_rewards(env.FILENAME)
+            env.stats.save_rewards(filename_rewards)
+            env.stats.save_rewards(filename_collision)
+            env.store_q_table(filename_q_table)
+
     else:
         env.start_environment()
-        filename = f"results/reward_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
-        filename2 = f"results/collision_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
-        env.stats.save_rewards(filename)
-        env.stats.save_collision(filename2)
+        filename_rewards = f"results/reward_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
+        filename_collision = f"results/collision_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
+        filename_q_table = f"results/collision_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
+        env.stats.save_rewards(filename_rewards)
+        env.stats.save_collision(filename_collision)
+        env.store_q_table(filename_q_table)
 
 
 if __name__ == "__main__":

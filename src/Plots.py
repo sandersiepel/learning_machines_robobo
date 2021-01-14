@@ -1,7 +1,7 @@
 from Statistics import Statistics, Experiment
 import numpy as np
 
-stats1 = Statistics(10, 100)
+stats1 = Statistics(20, 300)
 
 stats1.read_data("testSpawn")
 stats1.read_collision("testSpawn")

@@ -37,9 +37,16 @@ class Statistics:
 
     def read_experiment(self, name, number):
         # This function is used to open a pickle file (the rewards from a training session) and load it.
-        with open(f'results/{name}/reward_data_{self.max_simulation}_{self.max_iteration}_{name}_{number}.pickle', 'rb') as fp:
+        reward_data = f'results/{name}/reward_data_{self.max_simulation}_{self.max_iteration}_{name}_{number}.pickle'
+        collision_data = f'results/{name}/reward_data_{self.max_simulation}_{self.max_iteration}_{name}_{number}.pickle'
+        with open(reward_data, 'rb') as fp:
             rewards = pickle.load(fp)
         self.rewards = rewards
+
+        with open(collision_data, 'rb') as fp:
+            collision = pickle.load(fp)
+        self.collision = collision
+
 
     def save_rewards(self, name):
         # This function is used to save the accumulated rewards during training in a pickle file.

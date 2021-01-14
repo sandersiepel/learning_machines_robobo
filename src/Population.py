@@ -50,7 +50,7 @@ class Individual:
 
     def mutate_individual(self):
         for i in range(len(self.weights)):
-            if random.random() < 0.05:
+            if random.random() < 0.1:
                 # print("mutate")
                 self.weights[i] = random.uniform(-W_MULTIPLIER, W_MULTIPLIER)
 
