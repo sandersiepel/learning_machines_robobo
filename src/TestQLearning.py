@@ -2,7 +2,7 @@ from __future__ import print_function
 from TrainQLearning import Environment
 
 
-FILENAME = "results/q_table_20_200_test1.pickle"
+FILENAME = "results/q_table_500_500_newArena.pickle"
 SIMULATIONS = 5
 ITERATIONS = 1_000
 
@@ -17,8 +17,10 @@ class TestEnvironment:
         self.env.q_table = self.env.read_q_table(FILENAME)
 
         rewards = []
+        collisions = []
         for i in range(SIMULATIONS):
             simulation_reward = 0
+            simulation_collisions = 0
             self.env.rob.play_simulation()
 
             for _ in range(ITERATIONS):
@@ -32,12 +34,19 @@ class TestEnvironment:
                 _, reward = self.env.handle_action(best_action)
                 simulation_reward += reward
 
+                # Keep track of collisions
+                collision = self.env.physical_collision()
+                if collision:
+                    simulation_collisions += 1
+
             # Simulation has ended, collect rewards and print stats
             rewards.append(simulation_reward)
-            self.env.rob.stop_world()
-            print(f"Simulation {i+1} of {SIMULATIONS} ended, total collected reward over {ITERATIONS} iterations: {simulation_reward}")
+            collisions.append(simulation_collisions)
 
-        print(f"Average reward over {SIMULATIONS} simulations * {ITERATIONS} iterations: {sum(rewards) / len(rewards)}")
+            self.env.rob.stop_world()
+            print(f"Simulation {i+1} of {SIMULATIONS} ended, reward over {ITERATIONS} iterations: {simulation_reward}. Collisions: {simulation_collisions}")
+
+        print(f"Average reward over {SIMULATIONS} simulations * {ITERATIONS} iterations: {sum(rewards) / len(rewards)}. Avg collisions: {sum(collisions) / len(collisions)}")
 
 
 def main():

@@ -562,7 +562,7 @@ def simxSetObjectQuaternion(clientID, objectHandle, relativeToObjectHandle, quat
     quat = (ct.c_float*4)(*quaternion)
     return c_SetObjectQuaternion(clientID, objectHandle, relativeToObjectHandle, quat, operationMode)
 
-def simxSetObjectPosition(clientID, objectHandle, relativeToObjectHandle, position, operationMode):
+def simxSetObjectPosition(clientID: object, objectHandle: object, relativeToObjectHandle: object, position: object, operationMode: object) -> object:
     '''
     Please have a look at the function description/documentation in the V-REP user manual
     '''

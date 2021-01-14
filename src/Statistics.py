@@ -67,7 +67,10 @@ class Statistics:
 
     def add_reward(self, simulation, iteration, reward):
         # This function adds a reward to the simulation object
-        self.rewards[simulation][iteration] = reward
+        try:
+            self.rewards[simulation][iteration] = reward
+        except IndexError:
+            print(f'Weird index error, should not happen. Indices: {simulation}/{iteration}, reward: {reward}')
 
     def add_collision(self, simulation, total_collision):
         self.collision[simulation] = total_collision
