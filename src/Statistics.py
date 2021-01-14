@@ -47,7 +47,10 @@ class Statistics:
 
     def add_reward(self, simulation, iteration, reward):
         # This function adds a reward to the simulation object
-        self.rewards[simulation][iteration] = reward
+        try:
+            self.rewards[simulation][iteration] = reward
+        except IndexError:
+            print(f'Weird index error, should not happen. Indices: {simulation}/{iteration}, reward: {reward}')
 
     def add_fitness(self, max_fitness, avg_fitness, generation):
         self.rewards[generation][0] = max_fitness
