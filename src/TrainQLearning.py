@@ -4,6 +4,7 @@ import time
 import numpy as np
 import robobo
 import sys
+import vrep
 import signal
 import prey
 import pickle
@@ -19,7 +20,7 @@ N_RUNS = 5  # How many times an experiment is done if MULTIPLE_RUNS = True.
 EXPERIMENT_COUNTER = 0  # Only needed for training over multiple experiments (MULTIPLE_RUNS = "True")
 
 # For each time training, give this a unique name so the data can be saved with a unique name.
-EXPERIMENT_NAME = 'newArena'
+EXPERIMENT_NAME = 'testSpawn'
 
 
 class Direction:
@@ -30,10 +31,11 @@ class Direction:
     LLEFT = (-25, 25, 300)  # Action: 4, strong left
 
 
+# noinspection PyProtectedMember
 class Environment:
     # All of our constants that together define a training set-up.
-    MAX_ITERATIONS = 200  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 500  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_ITERATIONS = 500  # Amount of simulations until termination.
+    MAX_SIMULATION_ITERATIONS = 20  # Amount of actions within one simulation. Actions = Q-table updates.
 
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
@@ -60,10 +62,15 @@ class Environment:
         self.q_table = self.initialize_q_table()
 
     def start_environment(self):
+        # Initialize the start position handles + the robot handle
+        robot, handles = self.initialize_handles()
+
         for i in trange(self.MAX_ITERATIONS):  # Nifty, innit?
             print(f"Starting simulation nr. {i+1}/{self.MAX_ITERATIONS}. Epsilon: {self.EPSILON_LOW}. Q-table size: {self.q_table.size}")
 
-            self.rob.wait_for_ping()
+            # Each new simulation, find a new (random) start position based on the provided handles.
+            start_pos, robot = self.determine_start_position(handles, robot)
+            vrep.simxSetObjectPosition(self.rob._clientID, robot, -1, start_pos, vrep.simx_opmode_oneshot)
             self.rob.play_simulation()
 
             # A simulation runs until valid_environment returns False.
@@ -100,6 +107,22 @@ class Environment:
     def store_q_table(self):
         with open(f"results/q_table_{self.MAX_ITERATIONS}_{self.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle", 'wb') as fp:
             pickle.dump(self.q_table, fp)
+
+    def initialize_handles(self):
+        # This function initializes the starting handles. These are used for initializing different start positions.
+        _, robot = vrep.simxGetObjectHandle(self.rob._clientID, 'Robobo', vrep.simx_opmode_blocking)
+        _, handle0 = vrep.simxGetObjectHandle(self.rob._clientID, 'Start#0', vrep.simx_opmode_blocking)
+        _, handle1 = vrep.simxGetObjectHandle(self.rob._clientID, 'Start#1', vrep.simx_opmode_blocking)
+        _, handle2 = vrep.simxGetObjectHandle(self.rob._clientID, 'Start#2', vrep.simx_opmode_blocking)
+        _, handle2 = vrep.simxGetObjectHandle(self.rob._clientID, 'Start#3', vrep.simx_opmode_blocking)
+
+        return robot, [handle0, handle1, handle2]
+
+    def determine_start_position(self, handles, robot):
+        # Given a handle for a start position, and a robot handle: determine a new start location randomly.
+        random_handle = random.choice(handles)
+        error, start_pos = vrep.simxGetObjectPosition(self.rob._clientID, random_handle, -1, vrep.simx_opmode_blocking)
+        return [start_pos[0], start_pos[1], 0.04], robot
 
     def best_action_for_state(self, state):
         # Given a state (tuple format), what is the best action we take, i.e. for which action is the Q-value highest?
@@ -284,7 +307,8 @@ def main():
             env.stats.save_rewards(env.FILENAME)
     else:
         env.start_environment()
-        env.stats.save_rewards(env.FILENAME)
+        filename = f"results/reward_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
+        env.stats.save_rewards(filename)
 
 
 if __name__ == "__main__":
