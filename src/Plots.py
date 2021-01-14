@@ -1,8 +1,12 @@
 from Statistics import Statistics, Experiment
 import numpy as np
 
-# stats1 = Statistics(50, 200)
-# name1 = "steady_epsilon"
+stats1 = Statistics(10, 100)
+
+stats1.read_data("testSpawn")
+stats1.read_collision("testSpawn")
+stats1.plot_two_different_axis(stats1.get_average_reward_simulation(), stats1.collision)
+
 # stats2 = Statistics(50, 200)
 # name2 = "dynamic_epsilon"
 #
@@ -22,9 +26,9 @@ import numpy as np
 # exp2 = Experiment('old_actions', 50, 250, window=True, window_size=5, num_experiments=4)
 # exp1.plot_two_experiments(exp2)
 
-stats = Statistics(10, 2)
+# stats = Statistics(10, 2)
 # stats.read_fitness("best_weights_20.pickle")
-stats.read_fitness("EC_fitness")
-stats.plot_two_same_axis(stats.rewards[:, 0], stats.rewards[:, 1], label1="max_reward", label2="avg_reward",
-                         x_label="Generation", title="Average and maximum fitness with EC", y_label="Fitness")
+# stats.read_fitness("EC_fitness")
+# stats.plot_two_same_axis(stats.rewards[:, 0], stats.rewards[:, 1], label1="max_reward", label2="avg_reward",
+#                          x_label="Generation", title="Average and maximum fitness with EC", y_label="Fitness")
 

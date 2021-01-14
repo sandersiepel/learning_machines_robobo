@@ -34,8 +34,8 @@ class Direction:
 # noinspection PyProtectedMember
 class Environment:
     # All of our constants that together define a training set-up.
-    MAX_ITERATIONS = 500  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 500  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_ITERATIONS = 10  # Amount of simulations until termination.
+    MAX_SIMULATION_ITERATIONS = 100  # Amount of actions within one simulation. Actions = Q-table updates.
 
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
@@ -75,7 +75,6 @@ class Environment:
             start_pos, robot = self.determine_start_position(handles, robot)
             vrep.simxSetObjectPosition(self.rob._clientID, robot, -1, start_pos, vrep.simx_opmode_oneshot)
             self.rob.play_simulation()
-            total_collision = 0
 
             # A simulation runs until valid_environment returns False.
             while self.valid_environment():
@@ -93,7 +92,7 @@ class Environment:
                 self.iteration_counter += 1  # Keep track of how many actions this simulation does.
             else:
                 self.store_q_table()  # Save Q-table after each iteration because, why not.
-
+                self.stats.add_collision(i, self.physical_collision_counter)
                 # Reset the counters
                 self.iteration_counter = 0
                 self.collision_counter = 0
@@ -203,6 +202,10 @@ class Environment:
         # and reward, which is the reward from this action.
         collision = self.collision()  # Do we collide, returns either "nothing", "far" or "close"
         collision2 = self.physical_collision()
+
+        if collision2:
+            self.physical_collision_counter += 1
+
         reward = self.determine_reward(collision, action)
 
         if action == 0:
@@ -217,7 +220,7 @@ class Environment:
             left, right, duration = Direction.FORWARD  # Forward, action 2
 
         self.rob.move(left, right, duration)
-        return self.handle_state(), reward  # New_state, reward
+        return self.handle_state(), reward # New_state, reward
 
     @staticmethod
     def determine_reward(collision, action):
@@ -321,7 +324,9 @@ def main():
     else:
         env.start_environment()
         filename = f"results/reward_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
+        filename2 = f"results/collision_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
         env.stats.save_rewards(filename)
+        env.stats.save_collision(filename2)
 
 
 if __name__ == "__main__":

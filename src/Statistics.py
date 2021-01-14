@@ -46,6 +46,17 @@ class Statistics:
         with open(name, 'wb') as fp:
             pickle.dump(self.rewards, fp)
 
+    def save_collision(self, name):
+        # This function is used to save the accumulated rewards during training in a pickle file.
+        with open(name, 'wb') as fp:
+            pickle.dump(self.collision, fp)
+
+    def read_collision(self, name):
+        # This function is used to save the accumulated rewards during training in a pickle file.
+        with open(f'results/collision_data_{self.max_simulation}_{self.max_iteration}_{name}.pickle', 'rb') as fp:
+            collision = pickle.load(fp)
+        self.collision = collision
+
     def add_reward(self, simulation, iteration, reward):
         # This function adds a reward to the simulation object
         self.rewards[simulation][iteration] = reward
@@ -154,7 +165,6 @@ class Statistics:
         lns = lns1 + lns2
         labs = [l.get_label() for l in lns]
         ax2.legend(lns, labs, loc=0)
-
         plt.title(title)
         plt.show()
 
