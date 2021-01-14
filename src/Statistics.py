@@ -19,6 +19,7 @@ class Statistics:
             max_iteration: maximum amount of iterations per simulation
         """
         self.rewards = np.random.uniform(low=0, high=0, size=(max_simulation, max_iteration))
+        self.collision = np.random.uniform(low=0, high=0, size=max_simulation)
         self.max_simulation = max_simulation
         self.max_iteration = max_iteration
 
@@ -48,6 +49,9 @@ class Statistics:
     def add_reward(self, simulation, iteration, reward):
         # This function adds a reward to the simulation object
         self.rewards[simulation][iteration] = reward
+
+    def add_collision(self, simulation, total_collision):
+        self.collision[simulation] = total_collision
 
     def add_fitness(self, max_fitness, avg_fitness, generation):
         self.rewards[generation][0] = max_fitness

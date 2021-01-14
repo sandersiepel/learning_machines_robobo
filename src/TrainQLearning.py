@@ -72,6 +72,7 @@ class Environment:
             start_pos, robot = self.determine_start_position(handles, robot)
             vrep.simxSetObjectPosition(self.rob._clientID, robot, -1, start_pos, vrep.simx_opmode_oneshot)
             self.rob.play_simulation()
+            total_collision = 0
 
             # A simulation runs until valid_environment returns False.
             while self.valid_environment():

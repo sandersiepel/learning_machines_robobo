@@ -30,11 +30,11 @@ class Direction:
 class ECEnvironment:
     # All of our constants, prone to change.
     MAX_STEPS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
-    EXPERIMENT_NAME = 'best_weights_40'
+    EXPERIMENT_NAME = 'best_weights_10'
     hostname = socket.gethostname()
     IP_ADDRESS = socket.gethostbyname(hostname)
-    POP_SIZE = 40
-    GEN_SIZE = 40
+    POP_SIZE = 10
+    GEN_SIZE = 10
 
     def __init__(self):
         signal.signal(signal.SIGINT, self.terminate_program)
@@ -52,8 +52,8 @@ class ECEnvironment:
                 self.rob.wait_for_ping()
                 self.rob.play_simulation()
                 self.pos = self.rob.position()
-                fitness = self.eval_ind(pop.pop_list[i])
-                pop.pop_list[i].fitness = fitness
+
+                pop.pop_list[i].fitness = self.eval_ind(pop.pop_list[i])
 
                 self.rob.stop_world()
                 self.rob.wait_for_ping()
