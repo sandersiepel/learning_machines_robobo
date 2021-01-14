@@ -5,6 +5,7 @@ import os
 import copy
 import pandas as pd
 import seaborn as sns
+import matplotlib.patches as mpatches
 
 
 class Statistics:
@@ -19,6 +20,7 @@ class Statistics:
             max_iteration: maximum amount of iterations per simulation
         """
         self.rewards = np.random.uniform(low=0, high=0, size=(max_simulation, max_iteration))
+        self.collision = np.random.uniform(low=0, high=0, size=max_simulation)
         self.max_simulation = max_simulation
         self.max_iteration = max_iteration
 
@@ -36,14 +38,32 @@ class Statistics:
 
     def read_experiment(self, name, number):
         # This function is used to open a pickle file (the rewards from a training session) and load it.
-        with open(f'results/{name}/reward_data_{self.max_simulation}_{self.max_iteration}_{name}_{number}.pickle', 'rb') as fp:
+        reward_data = f'results/{name}/reward_data_{self.max_simulation}_{self.max_iteration}_{name}_{number}.pickle'
+        collision_data = f'results/{name}/collision_data_{self.max_simulation}_{self.max_iteration}_{name}_{number}.pickle'
+        with open(reward_data, 'rb') as fp:
             rewards = pickle.load(fp)
         self.rewards = rewards
+
+        with open(collision_data, 'rb') as fp:
+            collision = pickle.load(fp)
+        self.collision = collision
+
 
     def save_rewards(self, name):
         # This function is used to save the accumulated rewards during training in a pickle file.
         with open(name, 'wb') as fp:
             pickle.dump(self.rewards, fp)
+
+    def save_collision(self, name):
+        # This function is used to save the accumulated rewards during training in a pickle file.
+        with open(name, 'wb') as fp:
+            pickle.dump(self.collision, fp)
+
+    def read_collision(self, name):
+        # This function is used to save the accumulated rewards during training in a pickle file.
+        with open(f'results/collision_data_{self.max_simulation}_{self.max_iteration}_{name}.pickle', 'rb') as fp:
+            collision = pickle.load(fp)
+        self.collision = collision
 
     def add_reward(self, simulation, iteration, reward):
         # This function adds a reward to the simulation object
@@ -51,6 +71,9 @@ class Statistics:
             self.rewards[simulation][iteration] = reward
         except IndexError:
             print(f'Weird index error, should not happen. Indices: {simulation}/{iteration}, reward: {reward}')
+
+    def add_collision(self, simulation, total_collision):
+        self.collision[simulation] = total_collision
 
     def add_fitness(self, max_fitness, avg_fitness, generation):
         self.rewards[generation][0] = max_fitness
@@ -153,7 +176,6 @@ class Statistics:
         lns = lns1 + lns2
         labs = [l.get_label() for l in lns]
         ax2.legend(lns, labs, loc=0)
-
         plt.title(title)
         plt.show()
 
@@ -169,7 +191,10 @@ class Experiment:
             if window:
                 df2 = pd.DataFrame(stat.get_data_rolling_window(window_size), columns=["Reward"])
             else:
-                df2 = pd.DataFrame(stat.get_average_reward_simulation(), columns=["Reward"])
+                # df2 = pd.DataFrame(stat.get_average_reward_simulation(), columns=["Reward"])
+                df2 = pd.DataFrame(stat.get_total_reward_simulation(), columns=["Reward"])
+            # print(stat.collision.shape)
+            df2["collision"] = stat.collision
             df2['Run'] = i+1
             df2['Simulation'] = df2.index + 1
             df2['experiment_name'] = experiment_name
@@ -184,4 +209,29 @@ class Experiment:
         df2 = self.df.append(experiment.df, ignore_index=True)
         ax = sns.lineplot(data=df2, x="Simulation", y="Reward", hue="experiment_name")
         ax.set_title(title)
+        plt.show()
+
+    def plot_reward_collision(self, title="rewards and collisions over training", label1=""):
+
+        fig, ax1 = plt.subplots(figsize=(10, 6))
+
+        ax1.set_title(title, fontsize=16)
+        ax1.set_xlabel('Simulation', fontsize=16)
+        ax1.set_ylabel('Reward', fontsize=16)
+        lns1 = sns.lineplot(data=self.df, x="Simulation", y="Reward")
+
+        ax2 = lns1
+
+        ax2 = ax1.twinx()
+        color = 'tab:orange'
+        ax2.set_ylabel('Collision', fontsize=16)
+
+        ax2 = sns.lineplot(data=self.df, x="Simulation", y="collision", color=color)
+
+        orange = mpatches.Patch(color='tab:orange', label='Collision')
+        blue = mpatches.Patch(color='tab:blue', label='Reward')
+        plt.legend(handles=[orange, blue])
+
+        ax2.tick_params(axis='y', color=color)
+
         plt.show()

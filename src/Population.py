@@ -51,6 +51,7 @@ class Individual:
     def mutate_individual(self):
         for i in range(len(self.weights)):
             if random.random() < 0.1:
+                # print("mutate")
                 self.weights[i] = random.uniform(-W_MULTIPLIER, W_MULTIPLIER)
 
     def __lt__(self, other):
@@ -59,8 +60,10 @@ class Individual:
     def initialize_with_parents(self, parent1, parent2):
         for i in range(len(self.weights)):
             if random.random() < 0.5:
+                # print("Parent 1")
                 self.weights[i] = parent1.weights[i]
             else:
+                # print("Parent 2")
                 self.weights[i] = parent2.weights[i]
 
     def read_weights(self, filename):
@@ -97,8 +100,8 @@ class Population:
 
         self.calculate_avg_fitness()
 
-        self.pop_list[2].copy_weights(self.pop_list[0])
-        for i in range(3, len(self.pop_list)):
+        # self.pop_list[2].copy_weights(self.pop_list[0])
+        for i in range(2, len(self.pop_list)):
             self.pop_list[i].initialize_with_parents(best, second_best)
             self.pop_list[i].mutate_individual()
 
