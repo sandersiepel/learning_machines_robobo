@@ -5,6 +5,7 @@ import os
 import copy
 import pandas as pd
 import seaborn as sns
+import matplotlib.patches as mpatches
 
 
 class Statistics:
@@ -38,7 +39,7 @@ class Statistics:
     def read_experiment(self, name, number):
         # This function is used to open a pickle file (the rewards from a training session) and load it.
         reward_data = f'results/{name}/reward_data_{self.max_simulation}_{self.max_iteration}_{name}_{number}.pickle'
-        collision_data = f'results/{name}/reward_data_{self.max_simulation}_{self.max_iteration}_{name}_{number}.pickle'
+        collision_data = f'results/{name}/collision_data_{self.max_simulation}_{self.max_iteration}_{name}_{number}.pickle'
         with open(reward_data, 'rb') as fp:
             rewards = pickle.load(fp)
         self.rewards = rewards
@@ -187,9 +188,10 @@ class Experiment:
             if window:
                 df2 = pd.DataFrame(stat.get_data_rolling_window(window_size), columns=["Reward"])
             else:
-                df2 = pd.DataFrame(stat.get_average_reward_simulation(), columns=["Reward"])
+                # df2 = pd.DataFrame(stat.get_average_reward_simulation(), columns=["Reward"])
+                df2 = pd.DataFrame(stat.get_total_reward_simulation(), columns=["Reward"])
             # print(stat.collision.shape)
-            # df2["collision"] = stat.collision
+            df2["collision"] = stat.collision
             df2['Run'] = i+1
             df2['Simulation'] = df2.index + 1
             df2['experiment_name'] = experiment_name
@@ -204,4 +206,29 @@ class Experiment:
         df2 = self.df.append(experiment.df, ignore_index=True)
         ax = sns.lineplot(data=df2, x="Simulation", y="Reward", hue="experiment_name")
         ax.set_title(title)
+        plt.show()
+
+    def plot_reward_collision(self, title="rewards and collisions over training", label1=""):
+
+        fig, ax1 = plt.subplots(figsize=(10, 6))
+
+        ax1.set_title(title, fontsize=16)
+        ax1.set_xlabel('Simulation', fontsize=16)
+        ax1.set_ylabel('Reward', fontsize=16)
+        lns1 = sns.lineplot(data=self.df, x="Simulation", y="Reward")
+
+        ax2 = lns1
+
+        ax2 = ax1.twinx()
+        color = 'tab:orange'
+        ax2.set_ylabel('Collision', fontsize=16)
+
+        ax2 = sns.lineplot(data=self.df, x="Simulation", y="collision", color=color)
+
+        orange = mpatches.Patch(color='tab:orange', label='Collision')
+        blue = mpatches.Patch(color='tab:blue', label='Reward')
+        plt.legend(handles=[orange, blue])
+
+        ax2.tick_params(axis='y', color=color)
+
         plt.show()

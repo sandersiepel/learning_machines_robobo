@@ -22,7 +22,8 @@ import numpy as np
 # stats2.plot_two_different_axis(stats2.get_average_reward_simulation(), epsilon, label1="average reward", label2="epsilon")
 
 exp1 = Experiment('test', 5, 100, window=False, num_experiments=5)
-exp1.plot_single_experiment(title="Old actions")
+# exp1.plot_single_experiment(title="Old actions")
+exp1.plot_reward_collision()
 # exp2 = Experiment('old_actions', 50, 250, window=True, window_size=5, num_experiments=4)
 # exp1.plot_two_experiments(exp2)
 
