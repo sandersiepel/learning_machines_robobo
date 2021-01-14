@@ -50,7 +50,7 @@ class Individual:
 
     def mutate_individual(self):
         for i in range(len(self.weights)):
-            if random.random() < 10:
+            if random.random() < 0.1:
                 self.weights[i] = random.uniform(-W_MULTIPLIER, W_MULTIPLIER)
 
     def __lt__(self, other):
@@ -58,19 +58,28 @@ class Individual:
 
     def initialize_with_parents(self, parent1, parent2):
         for i in range(len(self.weights)):
-            if random.random() < 50:
+            if random.random() < 0.5:
                 self.weights[i] = parent1.weights[i]
             else:
                 self.weights[i] = parent2.weights[i]
 
+    def read_weights(self, filename):
+        # This function loads an existing weights.
+        with open(filename, 'rb') as fp:
+            weights = pickle.load(fp)
+        self.weights = weights
+
+    def copy_weights(self, parent):
+        self.weights = copy.deepcopy(parent.weights)
 
 class Population:
 
-    def __init__(self, size):
+    def __init__(self, size, name):
         self.pop_list = []
         self.size = size
         self.best_fitness = -1000000
         self.avg_fitness = -1000000
+        self.name = name
 
     def create_new(self):
         for i in range(self.size):
@@ -84,11 +93,12 @@ class Population:
         second_best = self.pop_list[1]
 
         self.best_fitness = best.fitness
-        self.store_best_weights(best)
+        self.store_best_weights(best, self.name)
 
         self.calculate_avg_fitness()
 
-        for i in range(2, len(self.pop_list)):
+        self.pop_list[2].copy_weights(self.pop_list[0])
+        for i in range(3, len(self.pop_list)):
             self.pop_list[i].initialize_with_parents(best, second_best)
             self.pop_list[i].mutate_individual()
 
@@ -100,6 +110,6 @@ class Population:
         self.avg_fitness = avg_fitness
 
     @staticmethod
-    def store_best_weights(best):
-        with open(f"best_weights", 'wb') as fp:
+    def store_best_weights(best, name):
+        with open(f"results_EC/{name}.pickle", 'wb') as fp:
             pickle.dump(best.weights, fp)

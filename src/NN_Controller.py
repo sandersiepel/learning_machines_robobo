@@ -29,26 +29,26 @@ class Direction:
 
 class ECEnvironment:
     # All of our constants, prone to change.
-    MAX_STEPS = 150  # Amount of actions within one simulation. Actions = Q-table updates.
-    EXPERIMENT_NAME = 'old_actions'
+    MAX_STEPS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
+    EXPERIMENT_NAME = 'best_weights_40'
     hostname = socket.gethostname()
     IP_ADDRESS = socket.gethostbyname(hostname)
-    POP_SIZE = 15
-    GEN_SIZE = 15
+    POP_SIZE = 40
+    GEN_SIZE = 40
 
     def __init__(self):
         signal.signal(signal.SIGINT, self.terminate_program)
         self.rob = robobo.SimulationRobobo().connect(address=self.IP_ADDRESS, port=19997)
-
-    def start_environment(self):
-        pop = Population(self.POP_SIZE)
-        pop.create_new()
         self.con = Controller()
+
+    def train_ec(self):
+        pop = Population(self.POP_SIZE, self.EXPERIMENT_NAME)
+        pop.create_new()
 
         stats = Statistics(max_simulation=self.GEN_SIZE, max_iteration=2)
 
-        for j in trange(self.GEN_SIZE):
-            for i in range(self.POP_SIZE):
+        for j in trange(self.GEN_SIZE):  # For every generation
+            for i in range(self.POP_SIZE):  # For every individual
                 self.rob.wait_for_ping()
                 self.rob.play_simulation()
                 self.pos = self.rob.position()
@@ -62,49 +62,29 @@ class ECEnvironment:
             # print(f"Generation {j+1}/{self.GEN_SIZE} avg: {pop.avg_fitness}, max: {pop.best_fitness}")
         stats.save_rewards("EC_fitness")
 
-
     def terminate_program(self, test1, test2):
         sys.exit(1)
 
     def eval_ind(self, ind):
-        collision_count = 0
-        total_speed = 0
-        total_distance = 0
         total_fitness = 0
 
-        # act = Environment()
-
         for i in range(self.MAX_STEPS):
+            try:
+                sensor_values = np.log(np.array(self.rob.read_irs())) / 10
+            except:
+                sensor_values = [0,0,0,0,0,0,0,0]
 
-            sensor_values = np.log(np.array(self.rob.read_irs())) / 10
             sensor_values = np.where(sensor_values == -np.inf, 0, sensor_values)  # Remove the infinite values.
             sensor_values = (sensor_values - -0.65) / 0.65  # Scales all variables between [0, 1] where 0 is close proximity.
 
             out = self.con.forward(sensor_values, ind.weights)
 
-            # self.rob.move(out[0], out[1], 300)
-
-
             self.do_action(out)
             best_action = np.argmax(out)
-            # print(best_action)
+
             reward = Environment.determine_reward(self.collision(), best_action)
             total_fitness += reward
-            # print(reward)
 
-            # if self.collision():
-            #     collision_count += 1
-
-            # total_speed += self.check_forward(out)
-            #
-            # total_distance += self.calc_distance()
-            #
-            # s_trans = abs(out[0] + abs(out[1]))
-            # s_rot = abs(out[0] - out[1]) / 200
-            # v_sens = np.min(sensor_values)
-            # total_fitness += s_trans * (1-s_rot) * v_sens
-
-        # return -(collision_count * 10) + total_speed + total_distance
         return total_fitness
 
     def do_action(self, out):
@@ -132,21 +112,6 @@ class ECEnvironment:
 
         return np.sqrt((abs_x ** 2) + (abs_y ** 2))
 
-    # def collision(self):
-    #     # This function checks whether rob is close to something or not. It returns True if it's about to collide with
-    #     # another object. Also returns the "distance", either "close", "far" or "nothing".
-    #     # It also keeps track of the collision counter. If this counter exceeds its threshold (COLLISION_THRESHOLD)
-    #     # then the environment should reset (to avoid rob getting stuck).
-    #     try:
-    #         sensor_values = self.rob.read_irs()  # Should be absolute values (no log or anything).
-    #     except RuntimeWarning:
-    #         sensor_values = [0, 0, 0, 0, 0, 0, 0, 0]
-    #
-    #     collision_far = any([0.13 <= i < 0.2 for i in sensor_values])
-    #     collision_close = any([0 < i < 0.13 for i in sensor_values])
-    #
-    #     if collision_close:
-    #         return True
 
     def collision(self):
         # This function checks whether rob is close to something or not. It returns the "distance", either "close", "far" or "nothing".
@@ -182,5 +147,7 @@ class ECEnvironment:
             return -1
 
 
-env = ECEnvironment()
-env.start_environment()
+if __name__ == "__main__":
+    env = ECEnvironment()
+    env.train_ec()
+
