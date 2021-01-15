@@ -15,12 +15,12 @@ from tqdm import tqdm, trange
 import socket
 
 
-MULTIPLE_RUNS = True  # Doing an experiment multiple times, not required for normal training.
+MULTIPLE_RUNS = False  # Doing an experiment multiple times, not required for normal training.
 N_RUNS = 5  # How many times an experiment is done if MULTIPLE_RUNS = True.
 EXPERIMENT_COUNTER = 0  # Only needed for training over multiple experiments (MULTIPLE_RUNS = "True")
 
 # For each time training, give this a unique name so the data can be saved with a unique name.
-EXPERIMENT_NAME = 'ChangedEpsilon'
+EXPERIMENT_NAME = 'RecordExperiment'
 
 
 class Direction:
