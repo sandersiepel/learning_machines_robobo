@@ -15,12 +15,12 @@ from tqdm import tqdm, trange
 import socket
 
 
-MULTIPLE_RUNS = False  # Doing an experiment multiple times, not required for normal training.
+MULTIPLE_RUNS = True  # Doing an experiment multiple times, not required for normal training.
 N_RUNS = 5  # How many times an experiment is done if MULTIPLE_RUNS = True.
 EXPERIMENT_COUNTER = 0  # Only needed for training over multiple experiments (MULTIPLE_RUNS = "True")
 
 # For each time training, give this a unique name so the data can be saved with a unique name.
-EXPERIMENT_NAME = 'RecordExperiment'
+EXPERIMENT_NAME = 'ChangedEpsilon'
 
 
 class Direction:
@@ -35,12 +35,12 @@ class Direction:
 class Environment:
     # All of our constants that together define a training set-up.
     MAX_ITERATIONS = 100  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 20  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_SIMULATION_ITERATIONS = 500  # Amount of actions within one simulation. Actions = Q-table updates.
 
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
     EPSILON_LOW = 0.6  # Start epsilon value. This gradually increases.
-    EPSILON_HIGH = 1  # End epsilon value
+    EPSILON_HIGH = 0.95  # End epsilon value
     EPSILON_INCREASE = .01  # How much should we increase the epsilon value with, each time?
 
     IP_ADDRESS = socket.gethostbyname(socket.gethostname())  # Grabs local IP address (192.168.x.x) for your machine.
