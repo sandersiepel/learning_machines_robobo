@@ -26,9 +26,12 @@ def terminate_program(signal_number, frame):
 
 def main():
     signal.signal(signal.SIGINT, terminate_program)
-    rob = robobo.SimulationRobobo().connect(address='192.168.2.25', port=19997)
+    rob = robobo.SimulationRobobo().connect(address='192.168.1.3', port=19997)
 
     rob.play_simulation()
+
+    image = rob.get_image_front()
+    cv2.imwrite("test_pictures.png", image)
 
     # Following code moves the robot
     for i in range(1):
