@@ -13,9 +13,10 @@ import os
 from Statistics import Statistics
 from tqdm import tqdm, trange
 import socket
+import cv2
 
 
-MULTIPLE_RUNS = True  # Doing an experiment multiple times, not required for normal training.
+MULTIPLE_RUNS = False  # Doing an experiment multiple times, not required for normal training.
 N_RUNS = 5  # How many times an experiment is done if MULTIPLE_RUNS = True.
 EXPERIMENT_COUNTER = 0  # Only needed for training over multiple experiments (MULTIPLE_RUNS = "True")
 
@@ -24,31 +25,30 @@ EXPERIMENT_NAME = 'train_week1_1'
 
 
 class Direction:
-    LEFT = (-15, 15, 300)  # Action: 0, left
-    RIGHT = (15, -15, 300)  # Action: 1, right
+    LEFT = (-2, 2, 300)  # Action: 0, left
+    RIGHT = (2, -2, 300)  # Action: 1, right
     FORWARD = (25, 25, 300)  # Action: 2, forward
-    RRIGHT = (25, -25, 300)  # Action: 3, strong right
-    LLEFT = (-25, 25, 300)  # Action: 4, strong left
+    RRIGHT = (15, -15, 300)  # Action: 3, strong right
+    LLEFT = (-15, 15, 300)  # Action: 4, strong left
 
 
 # noinspection PyProtectedMember
 class Environment:
     # All of our constants that together define a training set-up.
-    MAX_ITERATIONS = 100  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 500  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_ITERATIONS = 10  # Amount of simulations until termination.
+    MAX_SIMULATION_ITERATIONS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
+    FOOD_AMOUNT = 6
 
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
-    EPSILON_LOW = 0.6  # Start epsilon value. This gradually increases.
-    EPSILON_HIGH = 0.95  # End epsilon value
-    EPSILON_INCREASE = .01  # How much should we increase the epsilon value with, each time?
+    EPSILON_LOW = 0.9  # Start epsilon value. This gradually increases.
+    EPSILON_HIGH = 0.91  # End epsilon value
+    EPSILON_INCREASE = 0  # How much should we increase the epsilon value with, each time?
 
     IP_ADDRESS = socket.gethostbyname(socket.gethostname())  # Grabs local IP address (192.168.x.x) for your machine.
 
-    COLLISION_THRESHOLD = 100  # After how many collision actions should we reset the environment? Prevents rob getting stuck.
-
     action_space = [0, 1, 2, 3, 4]  # All of our available actions. Find definitions in the Direction class.
-    collision_counter, iteration_counter, epsilon_counter, physical_collision_counter = 0, 0, 0, 0
+    iteration_counter, epsilon_counter = 0, 0
 
     # The epsilon_increase determines when the epsilon should be increased. This happens gradually from EPSILON_LOW
     # to EPSILON_HIGH during the amount of allowed iterations. So when MAX_ITERATIONS reaches its limit, so does
@@ -61,9 +61,6 @@ class Environment:
         self.stats = Statistics(self.MAX_ITERATIONS, self.MAX_SIMULATION_ITERATIONS)
         self.q_table = self.initialize_q_table()
 
-        # Initialize the collision handle for collision detection. Requires a "collision" class in V-REP.
-        _, self.collision_handle = vrep.simxGetCollisionHandle(self.rob._clientID, 'Collision', vrep.simx_opmode_blocking)
-
     def start_environment(self):
         # Initialize the start position handles + the robot handle
         robot, handles = self.initialize_handles()
@@ -72,12 +69,13 @@ class Environment:
             # print(f"Starting simulation nr. {i+1}/{self.MAX_ITERATIONS}. Epsilon: {self.EPSILON_LOW}. Q-table size: {self.q_table.size}")
 
             # Each new simulation, find a new (random) start position based on the provided handles.
-            start_pos, robot = self.determine_start_position(handles, robot)
-            vrep.simxSetObjectPosition(self.rob._clientID, robot, -1, start_pos, vrep.simx_opmode_oneshot)
+            # start_pos, robot = self.determine_start_position(handles, robot)
+            # vrep.simxSetObjectPosition(self.rob._clientID, robot, -1, start_pos, vrep.simx_opmode_oneshot)
             self.rob.play_simulation()
 
             # A simulation runs until valid_environment returns False.
             while self.valid_environment():
+                print(self.EPSILON_LOW)
                 # Check in what state rob is, return tuple e.g. (0, 0, 0, 1, 0). A state is defined by rob's sensors.
                 curr_state = self.handle_state()
 
@@ -91,15 +89,14 @@ class Environment:
                 self.change_epsilon()  # Check if we should increase epsilon or not.
                 self.iteration_counter += 1  # Keep track of how many actions this simulation does.
             else:
+                print(self.q_table)
                 # self.store_q_table()  # Save Q-table after each iteration because, why not.
-                self.stats.add_collision(i, self.physical_collision_counter)
                 # Reset the counters
                 self.iteration_counter = 0
-                self.collision_counter = 0
-                self.physical_collision_counter = 0
-
                 self.rob.stop_world()
                 self.rob.wait_for_ping()  # Maybe we should wait for ping so we avoid errors. Might not be necessary.
+
+            print(self.q_table)
 
     @staticmethod
     def read_q_table(filename):
@@ -137,7 +134,11 @@ class Environment:
         return best_action
 
     def determine_action(self, curr_state):
-        return random.choice(self.action_space) if random.random() < (1 - self.EPSILON_LOW) else self.best_action_for_state(curr_state)
+        if random.random() < (1 - self.EPSILON_LOW):
+            print("random choice")
+            return random.choice(self.action_space)
+        else:
+            return self.best_action_for_state(curr_state)
 
     @staticmethod
     def terminate_program(self, test1, test2):
@@ -148,10 +149,10 @@ class Environment:
 
     def valid_environment(self):
         # This function checks whether the current simulation can continue or not, depending on several criteria.
-        c1 = self.collision_counter > self.COLLISION_THRESHOLD
         c2 = self.iteration_counter >= self.MAX_SIMULATION_ITERATIONS
+        c3 = self.rob.collected_food() >= self.FOOD_AMOUNT
 
-        return False if any([c1, c2]) else True
+        return False if any([c2, c3]) else True
 
     def change_epsilon(self):
         # This function changes the epsilon value if needed. Only does so if we did x amount of iterations, and the
@@ -168,45 +169,46 @@ class Environment:
         # Since observation space is very large, we need to trim it down (bucketing) to only a select amount of
         # possible states, e.g. 4 for each sensor (4^8 = 65k). Or: use less sensors (no rear sensors for task 1).
         # E.g. the size (5, 5, 5, 5, 5) denotes each sensor, with its amount of possible states (see func handle_state).
-        return np.random.uniform(low=-.1, high=.1, size=([3, 3, 3, 3, 3] + [len(self.action_space)]))
+        return np.random.uniform(low=6, high=6, size=([2, 2] + [len(self.action_space)]))
 
     def handle_state(self):
-        # This function should return the values with which we can index our q_table, in tuple format.
-        # So, it should take the last 5 sensor inputs (current state), transform each of them into a bucket where
-        # the bucket size is already determined by the shape of the q_table.
-        try:
-            sensor_values = np.log(np.array(self.rob.read_irs()[3:])) / 10  #
-        except:
-            sensor_values = [0, 0, 0, 0, 0]
+        contours_left, contours_right = self.determine_food()
 
-        sensor_values = np.where(sensor_values == -np.inf, 0, sensor_values)  # Remove the infinite values.
-        sensor_values = (sensor_values - -0.65) / 0.65  # Scales all variables between [0, 1] where 0 is close proximity.
+        res = tuple()
+        if contours_left > 0:
+            res += (1,)
+        else:
+            res += (0,)
+        if contours_right > 0:
+            res += (1,)
+        else:
+            res += (0,)
 
-        # Check what the actual sensor_values are (between [0, 1]) and determine their state
-        indices = []
-        for sensor_value in sensor_values:
-            if sensor_value >= 0.8:  # No need for action, moving forward is best.
-                indices.append(0)
-            elif 0.65 <= sensor_value < 0.8:
-                indices.append(1)
-            elif sensor_value < 0.65:  # We see an object, but not really close yet.
-                indices.append(2)
+        return res
 
-        # Return the values in tuple format, with which we can index our Q-table. This tuple is a representation
-        # of the current state our robot is in (i.e. what does the robot see with its sensors).
-        return tuple(indices)
+    def determine_food(self):
+        image = self.rob.get_image_front()
 
-    def handle_action(self, action):
+        # Chop image vertically in two
+        image_left = image[:, 0:64, :]
+        image_right = image[:, 64:128, :]
+
+        # Create mask for color green
+        mask_left = cv2.inRange(image_left, (0, 100, 0), (90, 255, 90))
+        mask_right = cv2.inRange(image_right, (0, 100, 0), (90, 255, 90))
+
+        # Find contours, if present
+        contours_left, _ = cv2.findContours(mask_left, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        contours_right, _ = cv2.findContours(mask_right, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+
+        return len(contours_left), len(contours_right)
+
+    def handle_action(self, action, curr_state):
         # This function should accept an action (0, 1, 2...) and move the robot accordingly (left, right, forward).
         # It returns two things: new_state, which is the state (in tuple format) after this action has been performed.
         # and reward, which is the reward from this action.
-        collision = self.collision()  # Do we collide, returns either "nothing", "far" or "close"
-        collision2 = self.physical_collision()
 
-        if collision2:
-            self.physical_collision_counter += 1
-
-        reward = self.determine_reward(collision, action)
+        reward = self.determine_reward(action, curr_state)
 
         if action == 0:
             left, right, duration = Direction.LEFT  # Left, action 0
@@ -220,70 +222,54 @@ class Environment:
             left, right, duration = Direction.FORWARD  # Forward, action 2
 
         self.rob.move(left, right, duration)
-        return self.handle_state(), reward # New_state, reward
+        return self.handle_state(), reward  # New_state, reward
 
     @staticmethod
-    def determine_reward(collision, action):
+    def determine_reward(action, curr_state):
         # This function determines the reward an action should get, depending on whether or not rob is about to
-        # collide with an object within the environment.
+        # collide with an object within the environment.\
+        # Actions: left, right, forward, lleft, rright
         reward = 0
 
-        if action in [0, 1]:  # Action is moving either left or right.
-            if collision == "nothing":
-                reward -= 1
-            elif collision == "far":
-                reward += 1
-            elif collision == "close":
-                reward -= 1
-        elif action in [3, 4]:
-            if collision == "nothing":
-                reward -= 1
-            elif collision == "far":
-                reward -= 1
-            elif collision == "close":
-                reward += 2
-        elif action == 2:  # Action is moving forward.
-            if collision == "far":
-                reward -= 3
-            elif collision == "close":
+        if curr_state[0] == 0 and curr_state[1] == 0:
+            # Rob sees no food, we should explore (turn)
+            print('We see no food')
+            if action == 3:  # Only promote turning left to avoid left-right-left-right behavior
+                reward += 5
+            else:
                 reward -= 5
-            elif collision == "nothing":
-                reward += 3
 
+        if curr_state[0] > 0 and curr_state[1] == 0:
+            # Only something on our left, we should move left a bit
+            print("Food on left")
+            if action == 0:
+                reward += 5
+            else:
+                reward -= 5
+
+        if curr_state[0] == 0 and curr_state[1] > 0:
+            # Only something on our right, we should move right a bit
+            print("Food on right")
+            if action == 1:
+                reward += 5
+            else:
+                reward -= 5
+
+        if curr_state[0] > 0 and curr_state[1] > 0:
+            # Something in the middle OR both left and right has objects, move forward
+            print("Food on left AND right")
+            if action == 2:
+                reward += 5
+            else:
+                reward -= 5
+
+        print(f"Curr state: {curr_state}, action: {action}, received reward: {reward}\n")
         return reward
-
-    def collision(self):
-        # This function checks whether rob is close to something or not. It returns the "distance", either "close", "far" or "nothing".
-        # It also keeps track of the collision counter. If this counter exceeds its threshold (COLLISION_THRESHOLD)
-        # then the environment should reset (to avoid rob getting stuck).
-        try:
-            sensor_values = self.rob.read_irs()[3:]  # Should be absolute values (no log or anything).
-        except:
-            sensor_values = [0, 0, 0, 0, 0]
-
-        collision_far = any([0.13 <= i < 0.2 for i in sensor_values])
-        collision_close = any([0 < i < 0.13 for i in sensor_values])
-
-        if collision_close:
-            self.collision_counter += 1
-            return "close"
-        elif collision_far:
-            return "far"
-        else:
-            self.collision_counter = 0
-            return "nothing"
-
-    def physical_collision(self):
-        # This function checks for physical collision that is not based on the sensors, but on an object around the Robot
-        # in V-REP.
-        [_, collision_state] = vrep.simxReadCollision(self.rob._clientID, self.collision_handle, vrep.simx_opmode_streaming)
-
-        return collision_state
 
     def update_q_table(self, best_action, curr_state):
         # This function updates the Q-table accordingly to the current state of rob.
         # First, we determine the new state we end in if we would play our current best action, given our current state.
-        new_state, reward = self.handle_action(best_action)
+        new_state, reward = self.handle_action(best_action, curr_state)
 
         # Then we calculate the reward we would get in this new state.
         max_future_q = np.amax(self.q_table[new_state])
@@ -329,12 +315,12 @@ def main():
 
     else:
         env.start_environment()
-        filename_rewards = f"results/reward_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
-        filename_collision = f"results/collision_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
-        filename_q_table = f"results/q_table_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
-        env.stats.save_rewards(filename_rewards)
-        env.stats.save_collision(filename_collision)
-        env.store_q_table(filename_q_table)
+        # filename_rewards = f"results/reward_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
+        # filename_collision = f"results/collision_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
+        # filename_q_table = f"results/q_table_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
+        # env.stats.save_rewards(filename_rewards)
+        # env.stats.save_collision(filename_collision)
+        # env.store_q_table(filename_q_table)
 
 
 if __name__ == "__main__":
