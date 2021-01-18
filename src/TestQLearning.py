@@ -2,9 +2,11 @@ from __future__ import print_function
 from TrainQLearning import Environment
 
 
-FILENAME = "results/q_table_500_500_newArena.pickle"
+FILENAME = "results/train_week1/q_table_data_100_500_train_week1_5.pickle"
+M_FNAME = FILENAME = "results/ChangedEpsilon/q_table_data_100_500_ChangedEpsilon_"
 SIMULATIONS = 5
 ITERATIONS = 1_000
+EXPERIMENT = True
 
 
 class TestEnvironment:
@@ -21,8 +23,8 @@ class TestEnvironment:
         for i in range(SIMULATIONS):
             simulation_reward = 0
             simulation_collisions = 0
+            self.env.rob.wait_for_ping()
             self.env.rob.play_simulation()
-
             for _ in range(ITERATIONS):
                 # Choose rob's best action (deterministic) and keep track of rewards.
                 curr_state = self.env.handle_state()  # Check in what state rob is, return tuple e.g. (0, 0, 0, 1, 0)
@@ -49,11 +51,18 @@ class TestEnvironment:
         print(f"Average reward over {SIMULATIONS} simulations * {ITERATIONS} iterations: {sum(rewards) / len(rewards)}. Avg collisions: {sum(collisions) / len(collisions)}")
 
 
-def main():
+def main(experiment):
     env = Environment()
-    test_env = TestEnvironment(env)
-    test_env.run()
+    if not experiment:
+        test_env = TestEnvironment(env)
+        test_env.run()
+    else:
+        for i in range(5):
+            global FILENAME
+            FILENAME = M_FNAME + str(i+1) + ".pickle"
+            test_env = TestEnvironment(env)
+            test_env.run()
 
 
 if __name__ == "__main__":
-    main()
+    main(EXPERIMENT)

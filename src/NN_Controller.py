@@ -34,7 +34,7 @@ class ECEnvironment:
     hostname = socket.gethostname()
     IP_ADDRESS = socket.gethostbyname(hostname)
     POP_SIZE = 10
-    GEN_SIZE = 10
+    GEN_SIZE = 20
 
     def __init__(self):
         signal.signal(signal.SIGINT, self.terminate_program)
@@ -53,12 +53,17 @@ class ECEnvironment:
                 self.rob.play_simulation()
                 self.pos = self.rob.position()
 
-                pop.pop_list[i].fitness = self.eval_ind(pop.pop_list[i])
+                fitness = self.eval_ind(pop.pop_list[i])
+                pop.pop_list[i].fitness = fitness # evaluate an individual and store its fitness
+                print("Fitness: " + str(fitness))
 
                 self.rob.stop_world()
                 self.rob.wait_for_ping()
+            avg_fitness = pop.calculate_avg_fitness()
+            best_fitness = pop.calculate_best_fitness()
+            pop.print_fitness()
+            stats.add_fitness(best_fitness, avg_fitness, j)
             pop.next_gen()
-            stats.add_fitness(pop.best_fitness, pop.avg_fitness, j)
             # print(f"Generation {j+1}/{self.GEN_SIZE} avg: {pop.avg_fitness}, max: {pop.best_fitness}")
         stats.save_rewards("EC_fitness")
 
@@ -68,7 +73,7 @@ class ECEnvironment:
     def eval_ind(self, ind):
         total_fitness = 0
 
-        for i in range(self.MAX_STEPS):
+        for i in range(self.MAX_STEPS):  # for all steps
             try:
                 sensor_values = np.log(np.array(self.rob.read_irs())) / 10
             except:
@@ -77,15 +82,46 @@ class ECEnvironment:
             sensor_values = np.where(sensor_values == -np.inf, 0, sensor_values)  # Remove the infinite values.
             sensor_values = (sensor_values - -0.65) / 0.65  # Scales all variables between [0, 1] where 0 is close proximity.
 
-            out = self.con.forward(sensor_values, ind.weights)
+            out = self.con.forward(sensor_values, ind.weights)  # get the output of the NN
 
-            self.do_action(out)
+            self.do_action(out)  # Do the action
             best_action = np.argmax(out)
-
-            reward = Environment.determine_reward(self.collision(), best_action)
+            # print(self.collision())
+            # print("step: " + self.collision() + " ; " + str(best_action))
+            reward = self.determine_reward(self.collision(), best_action)
             total_fitness += reward
 
         return total_fitness
+
+    @staticmethod
+    def determine_reward(collision, action):
+        # This function determines the reward an action should get, depending on whether or not rob is about to
+        # collide with an object within the environment.
+        reward = 0
+
+        if action in [0, 1]:  # Action is moving either left or right.
+            if collision == "nothing":
+                reward -= 0
+            elif collision == "far":
+                reward += 1
+            elif collision == "close":
+                reward += 1
+        elif action in [3, 4]:
+            if collision == "nothing":
+                reward -= 0
+            elif collision == "far":
+                reward += 1
+            elif collision == "close":
+                reward += 1
+        elif action == 2:  # Action is moving forward.
+            if collision == "far":
+                reward -= 0
+            elif collision == "close":
+                reward -= 1
+            elif collision == "nothing":
+                reward += 3
+
+        return reward
 
     def do_action(self, out):
         best_action = np.argmax(out)
@@ -120,7 +156,7 @@ class ECEnvironment:
         try:
             sensor_values = self.rob.read_irs()  # Should be absolute values (no log or anything).
         except:
-            sensor_values = [0, 0, 0, 0, 0, 0, 0, 0]
+            sensor_values = [1, 1, 1, 1, 1, 1, 1, 1]
 
         collision_far = any([0.13 <= i < 0.2 for i in sensor_values])
         collision_close = any([0 < i < 0.13 for i in sensor_values])

@@ -8,7 +8,7 @@ W_MULTIPLIER = 1
 
 class Controller:
     N_INPUT = 8
-    N_HIDDEN = 10
+    N_HIDDEN = 5
     N_OUTPUT = 5
 
     @staticmethod
@@ -80,8 +80,6 @@ class Population:
     def __init__(self, size, name):
         self.pop_list = []
         self.size = size
-        self.best_fitness = -1000000
-        self.avg_fitness = -1000000
         self.name = name
 
     def create_new(self):
@@ -92,25 +90,31 @@ class Population:
 
     def next_gen(self):
         self.pop_list.sort(reverse=True)
-        best = self.pop_list[0]
-        second_best = self.pop_list[1]
 
-        self.best_fitness = best.fitness
-        self.store_best_weights(best, self.name)
+        self.store_best_weights(self.pop_list[0], self.name)
 
-        self.calculate_avg_fitness()
-
-        # self.pop_list[2].copy_weights(self.pop_list[0])
         for i in range(2, len(self.pop_list)):
-            self.pop_list[i].initialize_with_parents(best, second_best)
+            self.pop_list[i].initialize_with_parents(self.pop_list[0], self.pop_list[1])
             self.pop_list[i].mutate_individual()
+
+    def print_fitness(self):
+        print("printing population: ")
+        for i in range(len(self.pop_list)):
+            if i == 0:
+                print(str(self.pop_list[i].fitness) + " Previously the best")
+            else:
+                print(self.pop_list[i].fitness)
 
     def calculate_avg_fitness(self):
         total = 0
         for i in range(len(self.pop_list)):
             total += self.pop_list[i].fitness
         avg_fitness = total / len(self.pop_list)
-        self.avg_fitness = avg_fitness
+        return avg_fitness
+
+    def calculate_best_fitness(self):
+        self.pop_list.sort(reverse=True)
+        return self.pop_list[0].fitness
 
     @staticmethod
     def store_best_weights(best, name):

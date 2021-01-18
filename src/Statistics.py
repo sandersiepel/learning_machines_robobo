@@ -97,7 +97,7 @@ class Statistics:
             sum_reward.append(np.sum(self.rewards[i]))
         return sum_reward
 
-    def get_data_rolling_window(self, window_size):
+    def get_data_rolling_window(self, window_size, raw_data):
         """
         Applies the average value to a rolling window
 
@@ -105,8 +105,8 @@ class Statistics:
             The size of the window. This value must be uneven!
         """
 
-        data = self.get_average_reward_simulation()
-        # data = self.collision
+        # data = self.get_average_reward_simulation()
+        data = raw_data
         padded_data = copy.deepcopy(data)
         window_data = []
         pad_size = (window_size - 1) // 2
@@ -193,12 +193,12 @@ class Experiment:
             stat = Statistics(num_simulations, num_iterations)
             stat.read_experiment(experiment_name, i+1)
             if window:
-                df2 = pd.DataFrame(stat.get_data_rolling_window(window_size), columns=["Reward"])
+                df2 = pd.DataFrame(stat.get_data_rolling_window(window_size, stat.rewards), columns=["Reward"])
             else:
-                df2 = pd.DataFrame(stat.get_average_reward_simulation(), columns=["Reward"])
-                # df2 = pd.DataFrame(stat.get_total_reward_simulation(), columns=["Reward"])
-            df2["collision"] = stat.collision
-            # df2["collision"] = stat.get_data_rolling_window(5)
+                # df2 = pd.DataFrame(stat.get_average_reward_simulation(), columns=["Reward"])
+                df2 = pd.DataFrame(stat.get_total_reward_simulation(), columns=["Reward"])
+            # df2["collision"] = stat.collision
+            df2["collision"] = stat.get_data_rolling_window(5, stat.collision)
             df2['Run'] = i+1
             df2['Simulation'] = df2.index + 1
             df2['experiment_name'] = experiment_name
@@ -215,14 +215,15 @@ class Experiment:
         ax.set_title(title)
         plt.show()
 
-    def plot_reward_collision(self, title="rewards and collisions over training", label1=""):
+    def plot_reward_collision(self, title="Total rewards and collisions over 5 training runs \n"
+                                          " with an increasing epsilon, including 95% confidence intervals", label1=""):
 
         fig, ax1 = plt.subplots(figsize=(10, 6))
 
         ax1.set_title(title, fontsize=16)
         ax1.set_xlabel('Simulation', fontsize=16)
         ax1.set_ylabel('Reward', fontsize=16)
-        lns1 = sns.lineplot(data=self.df, x="Simulation", y="Reward")
+        lns1 = sns.lineplot(data=self.df, x="Simulation", y="Reward", ci=95)
 
         ax2 = lns1
 
@@ -230,11 +231,11 @@ class Experiment:
         color = 'tab:orange'
         ax2.set_ylabel('Collision', fontsize=16)
 
-        ax2 = sns.lineplot(data=self.df, x="Simulation", y="collision", color=color)
+        ax2 = sns.lineplot(data=self.df, x="Simulation", y="collision", color=color, ci=95)
 
-        orange = mpatches.Patch(color='tab:orange', label='Collision')
-        blue = mpatches.Patch(color='tab:blue', label='Reward')
-        plt.legend(handles=[orange, blue])
+        orange = mpatches.Patch(color='tab:orange', label='Collision (right) with a window of size 5')
+        blue = mpatches.Patch(color='tab:blue', label='Reward (left)')
+        plt.legend(handles=[blue, orange], loc=9)
 
         ax2.tick_params(axis='y', color=color)
 
