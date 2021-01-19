@@ -36,7 +36,7 @@ class Direction:
 class Environment:
     # All of our constants that together define a training set-up.
     MAX_ITERATIONS = 50  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_SIMULATION_ITERATIONS = 100  # Amount of actions within one simulation. Actions = Q-table updates.
     FOOD_AMOUNT = 6
 
     LEARNING_RATE = .1

@@ -1,11 +1,16 @@
 from Statistics import Statistics, Experiment
 import numpy as np
 
-stats1 = Statistics(5, 100)
+stats1 = Statistics(50, 200)
 #
 # stats1.read_data("train_week2")
+stats1.read_step_counter("train_week2")
 stats1.read_food_amount("train_week2")
-stats1.plot_data(stats1.collision)
+# stats1.plot_data(stats1.step_counter)
+
+stats1.plot_two_different_axis(stats1.food_amount, stats1.step_counter)
+
+
 # stats1.plot_two_different_axis(stats1.get_average_reward_simulation(), stats1.collision)
 
 # stats2 = Statistics(50, 200)
