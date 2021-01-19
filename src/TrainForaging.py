@@ -14,6 +14,7 @@ from Statistics import Statistics
 from tqdm import tqdm, trange
 import socket
 import cv2
+import pandas as pd
 
 
 MULTIPLE_RUNS = False  # Doing an experiment multiple times, not required for normal training.
@@ -89,14 +90,7 @@ class Environment:
                 self.change_epsilon()  # Check if we should increase epsilon or not.
                 self.iteration_counter += 1  # Keep track of how many actions this simulation does.
             else:
-                print("nothing", self.q_table[(0, 0, 0)])  # TODO: print all combinations for states
-                print("only right", self.q_table[(0, 0, 1)])
-                print("center, right", self.q_table[(0, 1, 1)])
-                print("everywhere", self.q_table[(1, 1, 1)])
-                print("only center", self.q_table[(0, 1, 0)])
-                print("only left", self.q_table[(1, 0, 0)])
-                print("left and center", self.q_table[(1, 1, 0)])
-                print("left and right", self.q_table[(1, 0, 1)])
+                self.print_q_table()
 
                 # self.store_q_table()  # Save Q-table after each iteration because, why not.
                 # Reset the counters
@@ -106,8 +100,8 @@ class Environment:
                 self.iteration_counter = 0
                 self.rob.stop_world()
                 self.rob.wait_for_ping()  # Maybe we should wait for ping so we avoid errors. Might not be necessary.
-
-            print(self.q_table)
+            self.print_q_table()
+            # print(self.q_table)
 
     @staticmethod
     def read_q_table(filename):
@@ -119,6 +113,21 @@ class Environment:
     def store_q_table(self, name):
         with open(name, 'wb') as fp:
             pickle.dump(self.q_table, fp)
+
+    def print_q_table(self):
+        arrays = [["0", "0", "0", "0", "1", "1", "1", "1"],
+                  ["0", "0", "1", "1", "0", "0", "1", "1"],
+                  ["0", "1", "0", "1", "0", "1", "0", "1"]]
+        tuples = list(zip(*arrays))
+
+        index = pd.MultiIndex.from_tuples(tuples, names=["left", "center", "right"])
+        s = pd.DataFrame(np.nan, index=index, columns=["left", "right", "Center", "hard left", "hard right"])
+
+        for i in range(2):
+            for j in range(2):
+                for k in range(2):
+                    s.loc[(str(i), str(j), str(k))] = self.q_table[(i, j, k)]
+        print(s.head(8))
 
     def initialize_handles(self):
         # This function initializes the starting handles. These are used for initializing different start positions.
