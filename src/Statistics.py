@@ -21,6 +21,8 @@ class Statistics:
         """
         self.rewards = np.random.uniform(low=0, high=0, size=(max_simulation, max_iteration))
         self.collision = np.random.uniform(low=0, high=0, size=max_simulation)
+        self.food_amount = np.random.uniform(low=0, high=0, size=max_simulation)
+        self.step_counter = np.random.uniform(low=0, high=0, size=max_simulation)
         self.max_simulation = max_simulation
         self.max_iteration = max_iteration
 
@@ -40,6 +42,8 @@ class Statistics:
         # This function is used to open a pickle file (the rewards from a training session) and load it.
         reward_data = f'results/{name}/reward_data_{self.max_simulation}_{self.max_iteration}_{name}_{number}.pickle'
         collision_data = f'results/{name}/collision_data_{self.max_simulation}_{self.max_iteration}_{name}_{number}.pickle'
+        food_data = f'results/{name}/food_data_{self.max_simulation}_{self.max_iteration}_{name}_{number}.pickle'
+
         with open(reward_data, 'rb') as fp:
             rewards = pickle.load(fp)
         self.rewards = rewards
@@ -48,22 +52,50 @@ class Statistics:
             collision = pickle.load(fp)
         self.collision = collision
 
+        with open(food_data, 'rb') as fp:
+            food_data = pickle.load(fp)
+        self.food_amount = food_data
+
+    def add_step_counter(self, simulation, step_counter):
+        self.step_counter[simulation] = step_counter
 
     def save_rewards(self, name):
         # This function is used to save the accumulated rewards during training in a pickle file.
         with open(name, 'wb') as fp:
             pickle.dump(self.rewards, fp)
 
+    def save_step_counter(self, name):
+        # This function is used to save the accumulated rewards during training in a pickle file.
+        with open(name, 'wb') as fp:
+            pickle.dump(self.step_counter, fp)
+
     def save_collision(self, name):
         # This function is used to save the accumulated rewards during training in a pickle file.
         with open(name, 'wb') as fp:
             pickle.dump(self.collision, fp)
+
+    def save_food_amount(self, name):
+        # This function is used to save the accumulated rewards during training in a pickle file.
+        with open(name, 'wb') as fp:
+            pickle.dump(self.food_amount, fp)
 
     def read_collision(self, name):
         # This function is used to save the accumulated rewards during training in a pickle file.
         with open(f'results/collision_data_{self.max_simulation}_{self.max_iteration}_{name}.pickle', 'rb') as fp:
             collision = pickle.load(fp)
         self.collision = collision
+
+    def read_step_counter(self, name):
+        # This function is used to save the accumulated rewards during training in a pickle file.
+        with open(f'results/step_counter_{self.max_simulation}_{self.max_iteration}_{name}.pickle', 'rb') as fp:
+            step_counter = pickle.load(fp)
+        self.step_counter = step_counter
+
+    def read_food_amount(self, name):
+        # This function is used to save the accumulated rewards during training in a pickle file.
+        with open(f'results/food_amount_{self.max_simulation}_{self.max_iteration}_{name}.pickle', 'rb') as fp:
+            food_amount = pickle.load(fp)
+        self.food_amount = food_amount
 
     def add_reward(self, simulation, iteration, reward):
         # This function adds a reward to the simulation object
@@ -74,6 +106,9 @@ class Statistics:
 
     def add_collision(self, simulation, total_collision):
         self.collision[simulation] = total_collision
+
+    def add_food(self, simulation, total_food):
+        self.food_amount[simulation] = total_food
 
     def add_fitness(self, max_fitness, avg_fitness, generation):
         self.rewards[generation][0] = max_fitness
@@ -97,7 +132,7 @@ class Statistics:
             sum_reward.append(np.sum(self.rewards[i]))
         return sum_reward
 
-    def get_data_rolling_window(self, window_size, raw_data):
+    def get_data_rolling_window(self, window_size):
         """
         Applies the average value to a rolling window
 
@@ -193,12 +228,12 @@ class Experiment:
             stat = Statistics(num_simulations, num_iterations)
             stat.read_experiment(experiment_name, i+1)
             if window:
-                df2 = pd.DataFrame(stat.get_data_rolling_window(window_size, stat.rewards), columns=["Reward"])
+                df2 = pd.DataFrame(stat.get_data_rolling_window(window_size), columns=["Reward"])
             else:
-                # df2 = pd.DataFrame(stat.get_average_reward_simulation(), columns=["Reward"])
-                df2 = pd.DataFrame(stat.get_total_reward_simulation(), columns=["Reward"])
-            # df2["collision"] = stat.collision
-            df2["collision"] = stat.get_data_rolling_window(5, stat.collision)
+                df2 = pd.DataFrame(stat.get_average_reward_simulation(), columns=["Reward"])
+                # df2 = pd.DataFrame(stat.get_total_reward_simulation(), columns=["Reward"])
+            df2["collision"] = stat.collision
+            # df2["collision"] = stat.get_data_rolling_window(5)
             df2['Run'] = i+1
             df2['Simulation'] = df2.index + 1
             df2['experiment_name'] = experiment_name
@@ -215,15 +250,14 @@ class Experiment:
         ax.set_title(title)
         plt.show()
 
-    def plot_reward_collision(self, title="Total rewards and collisions over 5 training runs \n"
-                                          " with an increasing epsilon, including 95% confidence intervals", label1=""):
+    def plot_reward_collision(self, title="rewards and collisions over training", label1=""):
 
         fig, ax1 = plt.subplots(figsize=(10, 6))
 
         ax1.set_title(title, fontsize=16)
         ax1.set_xlabel('Simulation', fontsize=16)
         ax1.set_ylabel('Reward', fontsize=16)
-        lns1 = sns.lineplot(data=self.df, x="Simulation", y="Reward", ci=95)
+        lns1 = sns.lineplot(data=self.df, x="Simulation", y="Reward")
 
         ax2 = lns1
 
@@ -231,11 +265,11 @@ class Experiment:
         color = 'tab:orange'
         ax2.set_ylabel('Collision', fontsize=16)
 
-        ax2 = sns.lineplot(data=self.df, x="Simulation", y="collision", color=color, ci=95)
+        ax2 = sns.lineplot(data=self.df, x="Simulation", y="collision", color=color)
 
-        orange = mpatches.Patch(color='tab:orange', label='Collision (right) with a window of size 5')
-        blue = mpatches.Patch(color='tab:blue', label='Reward (left)')
-        plt.legend(handles=[blue, orange], loc=9)
+        orange = mpatches.Patch(color='tab:orange', label='Collision')
+        blue = mpatches.Patch(color='tab:blue', label='Reward')
+        plt.legend(handles=[orange, blue])
 
         ax2.tick_params(axis='y', color=color)
 

@@ -21,7 +21,7 @@ N_RUNS = 5  # How many times an experiment is done if MULTIPLE_RUNS = True.
 EXPERIMENT_COUNTER = 0  # Only needed for training over multiple experiments (MULTIPLE_RUNS = "True")
 
 # For each time training, give this a unique name so the data can be saved with a unique name.
-EXPERIMENT_NAME = 'train_week1_1'
+EXPERIMENT_NAME = 'train_week2'
 
 
 class Direction:
@@ -35,7 +35,7 @@ class Direction:
 # noinspection PyProtectedMember
 class Environment:
     # All of our constants that together define a training set-up.
-    MAX_ITERATIONS = 10  # Amount of simulations until termination.
+    MAX_ITERATIONS = 50  # Amount of simulations until termination.
     MAX_SIMULATION_ITERATIONS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
     FOOD_AMOUNT = 6
 
@@ -64,6 +64,7 @@ class Environment:
     def start_environment(self):
         # Initialize the start position handles + the robot handle
         robot, handles = self.initialize_handles()
+        self.rob.set_phone_tilt(np.pi/6, 100)
 
         for i in trange(self.MAX_ITERATIONS):  # Nifty, innit?
             # print(f"Starting simulation nr. {i+1}/{self.MAX_ITERATIONS}. Epsilon: {self.EPSILON_LOW}. Q-table size: {self.q_table.size}")
@@ -75,7 +76,6 @@ class Environment:
 
             # A simulation runs until valid_environment returns False.
             while self.valid_environment():
-                print(self.EPSILON_LOW)
                 # Check in what state rob is, return tuple e.g. (0, 0, 0, 1, 0). A state is defined by rob's sensors.
                 curr_state = self.handle_state()
 
@@ -89,9 +89,20 @@ class Environment:
                 self.change_epsilon()  # Check if we should increase epsilon or not.
                 self.iteration_counter += 1  # Keep track of how many actions this simulation does.
             else:
-                print(self.q_table)
+                print("nothing", self.q_table[(0, 0, 0)])  # TODO: print all combinations for states
+                print("only right", self.q_table[(0, 0, 1)])
+                print("center, right", self.q_table[(0, 1, 1)])
+                print("everywhere", self.q_table[(1, 1, 1)])
+                print("only center", self.q_table[(0, 1, 0)])
+                print("only left", self.q_table[(1, 0, 0)])
+                print("left and center", self.q_table[(1, 1, 0)])
+                print("left and right", self.q_table[(1, 0, 1)])
+
                 # self.store_q_table()  # Save Q-table after each iteration because, why not.
                 # Reset the counters
+                self.stats.add_food(i, self.rob.collected_food())
+                # TODO: save amount of steps
+                self.stats.add_step_counter(i, self.iteration_counter)
                 self.iteration_counter = 0
                 self.rob.stop_world()
                 self.rob.wait_for_ping()  # Maybe we should wait for ping so we avoid errors. Might not be necessary.
@@ -135,7 +146,6 @@ class Environment:
 
     def determine_action(self, curr_state):
         if random.random() < (1 - self.EPSILON_LOW):
-            print("random choice")
             return random.choice(self.action_space)
         else:
             return self.best_action_for_state(curr_state)
@@ -169,13 +179,17 @@ class Environment:
         # Since observation space is very large, we need to trim it down (bucketing) to only a select amount of
         # possible states, e.g. 4 for each sensor (4^8 = 65k). Or: use less sensors (no rear sensors for task 1).
         # E.g. the size (5, 5, 5, 5, 5) denotes each sensor, with its amount of possible states (see func handle_state).
-        return np.random.uniform(low=6, high=6, size=([2, 2] + [len(self.action_space)]))
+        return np.random.uniform(low=6, high=6, size=([2, 2, 2] + [len(self.action_space)]))
 
     def handle_state(self):
-        contours_left, contours_right = self.determine_food()
+        contours_left, contours_center, contours_right = self.determine_food()
 
         res = tuple()
         if contours_left > 0:
+            res += (1,)
+        else:
+            res += (0,)
+        if contours_center > 0:
             res += (1,)
         else:
             res += (0,)
@@ -190,18 +204,21 @@ class Environment:
         image = self.rob.get_image_front()
 
         # Chop image vertically in two
-        image_left = image[:, 0:64, :]
-        image_right = image[:, 64:128, :]
+        image_left = image[:, 0:30, :]
+        image_center = image[:, 30:98, :]
+        image_right = image[:, 98:128, :]
 
         # Create mask for color green
         mask_left = cv2.inRange(image_left, (0, 100, 0), (90, 255, 90))
+        mask_center = cv2.inRange(image_center, (0, 100, 0), (90, 255, 90))
         mask_right = cv2.inRange(image_right, (0, 100, 0), (90, 255, 90))
 
         # Find contours, if present
         contours_left, _ = cv2.findContours(mask_left, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        contours_center, _ = cv2.findContours(mask_center, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         contours_right, _ = cv2.findContours(mask_right, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
-        return len(contours_left), len(contours_right)
+        return len(contours_left), len(contours_center), len(contours_right)
 
     def handle_action(self, action, curr_state):
         # This function should accept an action (0, 1, 2...) and move the robot accordingly (left, right, forward).
@@ -229,41 +246,17 @@ class Environment:
         # This function determines the reward an action should get, depending on whether or not rob is about to
         # collide with an object within the environment.\
         # Actions: left, right, forward, lleft, rright
+        # curr_state: contours_left (0), contours_center (1), contours_right (2)
         reward = 0
 
-        if curr_state[0] == 0 and curr_state[1] == 0:
-            # Rob sees no food, we should explore (turn)
-            print('We see no food')
-            if action == 3:  # Only promote turning left to avoid left-right-left-right behavior
-                reward += 5
-            else:
-                reward -= 5
-
-        if curr_state[0] > 0 and curr_state[1] == 0:
-            # Only something on our left, we should move left a bit
-            print("Food on left")
-            if action == 0:
-                reward += 5
-            else:
-                reward -= 5
-
-        if curr_state[0] == 0 and curr_state[1] > 0:
-            # Only something on our right, we should move right a bit
-            print("Food on right")
-            if action == 1:
-                reward += 5
-            else:
-                reward -= 5
-
-        if curr_state[0] > 0 and curr_state[1] > 0:
-            # Something in the middle OR both left and right has objects, move forward
-            print("Food on left AND right")
+        # If block(s) in center, move forward
+        if curr_state[1] > 0:
             if action == 2:
-                reward += 5
+                reward += 10
             else:
-                reward -= 5
+                reward -= 10
 
-        print(f"Curr state: {curr_state}, action: {action}, received reward: {reward}\n")
+        # print(f"Curr state: {curr_state}, action: {action}, received reward: {reward}\n")
         return reward
 
     def update_q_table(self, best_action, curr_state):
@@ -302,25 +295,26 @@ def main():
             env.EPSILON_LOW = epsilon_low
             EXPERIMENT_COUNTER += 1
 
-            # TODO (not necessary); also store q-table per experiment
             exp_name = f"{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}_{EXPERIMENT_COUNTER}.pickle"
             filename_rewards = f"results/{EXPERIMENT_NAME}/reward_data_" + exp_name
-            filename_collision = f"results/{EXPERIMENT_NAME}/collision_data_" + exp_name
+            filename_food_amount = f"results/{EXPERIMENT_NAME}/food_amount_" + exp_name
             filename_q_table = f"results/{EXPERIMENT_NAME}/q_table_data_" + exp_name
             env.q_table = env.initialize_q_table()
             env.start_environment()
             env.stats.save_rewards(filename_rewards)
-            env.stats.save_collision(filename_collision)
+            env.stats.save_collision(filename_food_amount)
             env.store_q_table(filename_q_table)
 
     else:
         env.start_environment()
-        # filename_rewards = f"results/reward_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
-        # filename_collision = f"results/collision_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
-        # filename_q_table = f"results/q_table_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
-        # env.stats.save_rewards(filename_rewards)
-        # env.stats.save_collision(filename_collision)
-        # env.store_q_table(filename_q_table)
+        filename_rewards = f"results/reward_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
+        filename_food_amount = f"results/food_amount_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
+        filename_q_table = f"results/q_table_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
+        filename_step_counter = f"results/step_counter_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
+        env.stats.save_rewards(filename_rewards)
+        env.stats.save_food_amount(filename_food_amount)
+        env.stats.save_step_counter(filename_step_counter)
+        env.store_q_table(filename_q_table)
 
 
 if __name__ == "__main__":
