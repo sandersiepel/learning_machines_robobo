@@ -18,12 +18,12 @@ import pandas as pd
 from itertools import product
 
 
-MULTIPLE_RUNS = False  # Doing an experiment multiple times, not required for normal training.
+MULTIPLE_RUNS = True  # Doing an experiment multiple times, not required for normal training.
 N_RUNS = 5  # How many times an experiment is done if MULTIPLE_RUNS = True.
 EXPERIMENT_COUNTER = 0  # Only needed for training over multiple experiments (MULTIPLE_RUNS = "True")
 
 # For each time training, give this a unique name so the data can be saved with a unique name.
-EXPERIMENT_NAME = 'train3'
+EXPERIMENT_NAME = 'train_7_mr'
 
 
 class Direction:
@@ -37,12 +37,12 @@ class Direction:
 # noinspection PyProtectedMember
 class Environment:
     # All of our constants that together define a training set-up.
-    MAX_ITERATIONS = 20  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_ITERATIONS = 50  # Amount of simulations until termination.
+    MAX_SIMULATION_ITERATIONS = 250  # Amount of actions within one simulation. Actions = Q-table updates.
     FOOD_AMOUNT = 6
 
     LEARNING_RATE = .1
-    DISCOUNT_FACTOR = .95
+    DISCOUNT_FACTOR = .8
     EPSILON_LOW = 0.9  # Start epsilon value. This gradually increases.
     EPSILON_HIGH = 0.91  # End epsilon value
     EPSILON_INCREASE = 0  # How much should we increase the epsilon value with, each time?
@@ -289,15 +289,14 @@ class Environment:
         else:
             left, right, duration = Direction.RRIGHT
 
-        #check food
+        # check food before movement
         food1 = self.rob.collected_food()
 
         self.rob.move(left, right, duration)
 
-        #check food
+        # check food after movement
         food2 = self.rob.collected_food()
         food_diff = food1 - food2
-        print(food_diff)
 
         reward = self.determine_reward(action, curr_state, -food_diff)
         return self.handle_state(), reward  # New_state, reward
@@ -320,15 +319,17 @@ class Environment:
                     reward += 1
                 else:
                     print("food is close and center, and we don't go forward, -10 reward")
-                    reward -= 1  # And punish other actions
+                    reward -= 5  # And punish other actions
 
             else:  # Block is either left close or right close
-                if action == 0 or action == 1:  # We should do a small turn, so action 0 or 1
+                if action == 0 and curr_state[1] > 0:  # We should do a small turn, so action 0 or 1
                     print("food is close but not in center, turning so positive reward")
+                    reward += 1
+                elif action == 1 and curr_state[5] > 0:
                     reward += 1
                 else:  # And if we don't, punish
                     print("food is close but not in center, not turning so negative reward")
-                    reward -= 1
+                    reward -= 5
 
         elif curr_state[0] > 0 or curr_state[2] > 0 or curr_state[4] > 0:  # There are no close blocks, only far
             if curr_state[2] > 0:  # If center far is a block, move forward
@@ -337,14 +338,16 @@ class Environment:
                     reward += 1
                 else:
                     print("food is far and in center but not forward, so negative reward")
-                    reward -= 1
+                    reward -= 5
             else:  # If left/right far is a block and not in center, turn slightly (action 0 or 1)
-                if action == 0 or action == 1:
+                if action == 0 and curr_state[0] > 1:
                     print("food is far and not in center, slight turn so positive reward")
+                    reward += 1
+                elif action == 1 and curr_state[4] > 0:
                     reward += 1
                 else:
                     print("food is far and not in center, no slight turn so negative reward")
-                    reward -= 1  # If we don't slightly turn, punish
+                    reward -= 5  # If we don't slightly turn, punish
 
         else:  # No block at all
             if action == 3:  # We see nothing, so hard turn
@@ -352,7 +355,7 @@ class Environment:
                 reward += 1
             else:  # If we don't do a hard turn right, punish
                 print("we don't see anything, no hard turn so negative reward")
-                reward -= 1
+                reward -= 5
 
         print(f"Curr state: {curr_state}, action: {action}, received reward: {reward}")
         print(f"Q-table for this state: {self.q_table[curr_state]}\n")
@@ -407,10 +410,12 @@ def main():
             filename_rewards = f"results/{EXPERIMENT_NAME}/reward_data_" + exp_name
             filename_food_amount = f"results/{EXPERIMENT_NAME}/food_amount_" + exp_name
             filename_q_table = f"results/{EXPERIMENT_NAME}/q_table_data_" + exp_name
+            filename_step_counter = f"results/{EXPERIMENT_NAME}/step_counter_" + exp_name
             env.q_table = env.initialize_q_table()
             env.start_environment()
             env.stats.save_rewards(filename_rewards)
-            env.stats.save_collision(filename_food_amount)
+            env.stats.save_step_counter(filename_step_counter)
+            env.stats.save_food_amount(filename_food_amount)
             env.store_q_table(filename_q_table)
 
     else:
