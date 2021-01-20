@@ -27,18 +27,18 @@ EXPERIMENT_NAME = 'train3'
 
 
 class Direction:
-    LEFT = (-15, 15, 300)  # Action: 0, left
-    RIGHT = (15, -15, 300)  # Action: 1, right
+    LEFT = (-5, 5, 300)  # Action: 0, left
+    RIGHT = (5, -5, 300)  # Action: 1, right
     FORWARD = (25, 25, 300)  # Action: 2, forward
-    RRIGHT = (25, -25, 300)  # Action: 3, strong right
-    LLEFT = (-25, 25, 300)  # Action: 4, strong left
+    RRIGHT = (15, -15, 300)  # Action: 3, strong right
+    LLEFT = (-15, 15, 300)  # Action: 4, strong left
 
 
 # noinspection PyProtectedMember
 class Environment:
     # All of our constants that together define a training set-up.
     MAX_ITERATIONS = 20  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 100  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_SIMULATION_ITERATIONS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
     FOOD_AMOUNT = 6
 
     LEARNING_RATE = .1
@@ -92,7 +92,7 @@ class Environment:
                 self.change_epsilon()  # Check if we should increase epsilon or not.
                 self.iteration_counter += 1  # Keep track of how many actions this simulation does.
             else:
-                self.print_q_table()
+                # self.print_q_table()
 
                 # Reset the counters
                 self.stats.add_food(i, self.rob.collected_food())
@@ -187,21 +187,35 @@ class Environment:
         # Since observation space is very large, we need to trim it down (bucketing) to only a select amount of
         # possible states, e.g. 4 for each sensor (4^8 = 65k). Or: use less sensors (no rear sensors for task 1).
         # E.g. the size (5, 5, 5, 5, 5) denotes each sensor, with its amount of possible states (see func handle_state).
-        return np.random.uniform(low=6, high=6, size=([2, 2, 2] + [len(self.action_space)]))
+        return np.random.uniform(low=6, high=6, size=([2, 2, 2, 2, 2, 2] + [len(self.action_space)]))
 
     def handle_state(self):
-        contours_left, contours_center, contours_right = self.determine_food()
-
+        contours_left_far, contours_left_close, contours_center_far, contours_center_close, contours_right_far, contours_right_close = self.determine_food()
         res = tuple()
-        if contours_left > 0:
+
+        if contours_left_far > 0:
             res += (1,)
         else:
             res += (0,)
-        if contours_center > 0:
+        if contours_left_close > 0:
             res += (1,)
         else:
             res += (0,)
-        if contours_right > 0:
+
+        if contours_center_far > 0:
+            res += (1,)
+        else:
+            res += (0,)
+        if contours_center_close > 0:
+            res += (1,)
+        else:
+            res += (0,)
+
+        if contours_right_far > 0:
+            res += (1,)
+        else:
+            res += (0,)
+        if contours_right_close > 0:
             res += (1,)
         else:
             res += (0,)
@@ -212,21 +226,36 @@ class Environment:
         image = self.rob.get_image_front()
 
         # Chop image vertically in two
-        image_left = image[:, 0:30, :]
-        image_center = image[:, 30:98, :]
-        image_right = image[:, 98:128, :]
+        image_left_far = image[0:64, 0:30, :]
+        image_left_close = image[64:128, 0:30, :]
+
+        image_center_far = image[0:64, 30:98, :]
+        image_center_close = image[64:128:, 30:98, :]
+
+        image_right_far = image[0:64, 98:128, :]
+        image_right_close = image[64:128:, 98:128, :]
 
         # Create mask for color green
-        mask_left = cv2.inRange(image_left, (0, 100, 0), (90, 255, 90))
-        mask_center = cv2.inRange(image_center, (0, 100, 0), (90, 255, 90))
-        mask_right = cv2.inRange(image_right, (0, 100, 0), (90, 255, 90))
+        mask_left_far = cv2.inRange(image_left_far, (0, 100, 0), (90, 255, 90))
+        mask_left_close = cv2.inRange(image_left_close, (0, 100, 0), (90, 255, 90))
+
+        mask_center_far = cv2.inRange(image_center_far, (0, 100, 0), (90, 255, 90))
+        mask_center_close = cv2.inRange(image_center_close, (0, 100, 0), (90, 255, 90))
+
+        mask_right_far = cv2.inRange(image_right_far, (0, 100, 0), (90, 255, 90))
+        mask_right_close = cv2.inRange(image_right_close, (0, 100, 0), (90, 255, 90))
 
         # Find contours, if present
-        contours_left, _ = cv2.findContours(mask_left, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        contours_center, _ = cv2.findContours(mask_center, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        contours_right, _ = cv2.findContours(mask_right, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        contours_left_far, _ = cv2.findContours(mask_left_far, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        contours_left_close, _ = cv2.findContours(mask_left_close, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
-        return len(contours_left), len(contours_center), len(contours_right)
+        contours_center_far, _ = cv2.findContours(mask_center_far, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        contours_center_close, _ = cv2.findContours(mask_center_close, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+
+        contours_right_far, _ = cv2.findContours(mask_right_far, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        contours_right_close, _ = cv2.findContours(mask_right_close, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+
+        return len(contours_left_far), len(contours_left_close), len(contours_center_far), len(contours_center_close), len(contours_right_far), len(contours_right_close)
 
     def handle_action(self, action, curr_state):
         # This function should accept an action (0, 1, 2...) and move the robot accordingly (left, right, forward).
@@ -252,18 +281,54 @@ class Environment:
     def determine_reward(action, curr_state):
         # This function determines the reward an action should get, depending on whether or not rob is about to
         # collide with an object within the environment.\
-        # Actions: left, right, forward, lleft, rright
-        # curr_state: contours_left (0), contours_center (1), contours_right (2)
+        # Actions: left, right, forward, rright, lleft
+        # curr_state: contours_left_far, contours_left_close, contours_center_far, contours_center_close, contours_right_far, contours_right_close
         reward = 0
 
-        # If block(s) in center, move forward
-        if curr_state[1] > 0:
-            if action == 2:
+        # Blocks are close, go get em
+        if curr_state[1] > 0 or curr_state[3] > 0 or curr_state[5] > 0:
+            # Block is in center, close
+            if curr_state[3] > 0:
+                if action == 2:  # If block is center, reward forward action
+                    print("food is close and center, and we go forward, +10 reward")
+                    reward += 10
+                else:
+                    print("food is close and center, and we don't go forward, -10 reward")
+                    reward -= 10  # And punish other actions
+
+            else:  # Block is either left close or right close
+                if action == 0 or action == 1:  # We should do a small turn, so action 0 or 1
+                    print("food is close but not in center, turning so positive reward")
+                    reward += 10
+                else:  # And if we don't, punish
+                    print("food is close but not in center, not turning so negative reward")
+                    reward -= 10
+
+        elif curr_state[0] > 0 or curr_state[2] > 0 or curr_state[4] > 0:  # There are no close blocks, only far
+            if curr_state[2] > 0:  # If center far is a block, move forward
+                if action == 2:
+                    print("food is far and in center, forward so positive reward")
+                    reward += 10
+                else:
+                    print("food is far and in center but not forward, so negative reward")
+                    reward -= 10
+            else:  # If left/right far is a block and not in center, turn slightly (action 0 or 1)
+                if action == 0 or action == 1:
+                    print("food is far and not in center, slight turn so positive reward")
+                    reward += 10
+                else:
+                    print("food is far and not in center, no slight turn so negative reward")
+                    reward -= 10  # If we don't slightly turn, punish
+
+        else:  # No block at all
+            if action == 3:  # We see nothing, so hard turn
+                print("we don't see anything, hard turn RIGHT so positive reward")
                 reward += 10
-            else:
+            else:  # If we don't do a hard turn right, punish
+                print("we don't see anything, no hard turn so negative reward")
                 reward -= 10
 
-        # print(f"Curr state: {curr_state}, action: {action}, received reward: {reward}\n")
+        print(f"Curr state: {curr_state}, action: {action}, received reward: {reward}\n")
         return reward
 
     def update_q_table(self, best_action, curr_state):
