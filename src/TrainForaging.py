@@ -22,15 +22,19 @@ N_RUNS = 5  # How many times an experiment is done if MULTIPLE_RUNS = True.
 EXPERIMENT_COUNTER = 0  # Only needed for training over multiple experiments (MULTIPLE_RUNS = "True")
 
 # For each time training, give this a unique name so the data can be saved with a unique name.
-EXPERIMENT_NAME = 'train_week2'
+EXPERIMENT_NAME = 'train3'
 
 
 class Direction:
-    LEFT = (-2, 2, 300)  # Action: 0, left
-    RIGHT = (2, -2, 300)  # Action: 1, right
-    FORWARD = (25, 25, 300)  # Action: 2, forward
-    RRIGHT = (15, -15, 300)  # Action: 3, strong right
-    LLEFT = (-15, 15, 300)  # Action: 4, strong left
+    LEFT_S = (-25, 25, 300)
+    LEFT_M = (-25, 25, 530)
+    LEFT_L = (-40, 40, 900)
+
+    FORWARD = (25, 25, 300)
+
+    RIGHT_S = (25, -25, 300)
+    RIGHT_M = (25, -25, 530)
+    RIGHT_L = (40, -40, 900)
 
 
 # noinspection PyProtectedMember
@@ -48,7 +52,7 @@ class Environment:
 
     IP_ADDRESS = socket.gethostbyname(socket.gethostname())  # Grabs local IP address (192.168.x.x) for your machine.
 
-    action_space = [0, 1, 2, 3, 4]  # All of our available actions. Find definitions in the Direction class.
+    action_space = [0, 1, 2, 3, 4, 5, 6]  # All of our available actions. Find definitions in the Direction class.
     iteration_counter, epsilon_counter = 0, 0
 
     # The epsilon_increase determines when the epsilon should be increased. This happens gradually from EPSILON_LOW
@@ -68,8 +72,9 @@ class Environment:
         self.rob.set_phone_tilt(np.pi/6, 100)
 
         for i in trange(self.MAX_ITERATIONS):  # Nifty, innit?
-            # print(f"Starting simulation nr. {i+1}/{self.MAX_ITERATIONS}. Epsilon: {self.EPSILON_LOW}. Q-table size: {self.q_table.size}")
+            print(f"Starting simulation nr. {i+1}/{self.MAX_ITERATIONS}. Epsilon: {self.EPSILON_LOW}. Q-table size: {self.q_table.size}, shape: {self.q_table.shape}")
 
+            # TODO enable random start positions
             # Each new simulation, find a new (random) start position based on the provided handles.
             # start_pos, robot = self.determine_start_position(handles, robot)
             # vrep.simxSetObjectPosition(self.rob._clientID, robot, -1, start_pos, vrep.simx_opmode_oneshot)
@@ -90,18 +95,16 @@ class Environment:
                 self.change_epsilon()  # Check if we should increase epsilon or not.
                 self.iteration_counter += 1  # Keep track of how many actions this simulation does.
             else:
-                self.print_q_table()
+                # self.print_q_table()
 
-                # self.store_q_table()  # Save Q-table after each iteration because, why not.
                 # Reset the counters
                 self.stats.add_food(i, self.rob.collected_food())
-                # TODO: save amount of steps
                 self.stats.add_step_counter(i, self.iteration_counter)
                 self.iteration_counter = 0
                 self.rob.stop_world()
                 self.rob.wait_for_ping()  # Maybe we should wait for ping so we avoid errors. Might not be necessary.
-            self.print_q_table()
-            # print(self.q_table)
+
+            # self.print_q_table()
 
     @staticmethod
     def read_q_table(filename):
@@ -121,12 +124,13 @@ class Environment:
         tuples = list(zip(*arrays))
 
         index = pd.MultiIndex.from_tuples(tuples, names=["left", "center", "right"])
-        s = pd.DataFrame(np.nan, index=index, columns=["left", "right", "Center", "hard left", "hard right"])
+        s = pd.DataFrame(np.nan, index=index, columns=["left", "right", "center", "hard left", "hard right"])
 
         for i in range(2):
             for j in range(2):
                 for k in range(2):
                     s.loc[(str(i), str(j), str(k))] = self.q_table[(i, j, k)]
+        s = s.astype(int)
         print(s.head(8))
 
     def initialize_handles(self):
@@ -188,12 +192,16 @@ class Environment:
         # Since observation space is very large, we need to trim it down (bucketing) to only a select amount of
         # possible states, e.g. 4 for each sensor (4^8 = 65k). Or: use less sensors (no rear sensors for task 1).
         # E.g. the size (5, 5, 5, 5, 5) denotes each sensor, with its amount of possible states (see func handle_state).
-        return np.random.uniform(low=6, high=6, size=([2, 2, 2] + [len(self.action_space)]))
+        return np.random.uniform(low=6, high=6, size=([2, 2, 2, 2, 2] + [len(self.action_space)]))
 
     def handle_state(self):
-        contours_left, contours_center, contours_right = self.determine_food()
+        contours_far_left, contours_left, contours_center, contours_right, contours_far_right = self.determine_food()
 
         res = tuple()
+        if contours_far_left > 0:
+            res += (1,)
+        else:
+            res += (0,)
         if contours_left > 0:
             res += (1,)
         else:
@@ -206,6 +214,10 @@ class Environment:
             res += (1,)
         else:
             res += (0,)
+        if contours_far_right > 0:
+            res += (1,)
+        else:
+            res += (0,)
 
         return res
 
@@ -213,39 +225,48 @@ class Environment:
         image = self.rob.get_image_front()
 
         # Chop image vertically in two
-        image_left = image[:, 0:30, :]
-        image_center = image[:, 30:98, :]
-        image_right = image[:, 98:128, :]
+        image_far_left = image[:, 0:25, :]
+        image_left = image[:, 25:50, :]
+        image_center = image[:, 50:78, :]
+        image_right = image[:, 78:103, :]
+        image_far_right = image[:, 103:128, :]
 
         # Create mask for color green
+        mask_far_left = cv2.inRange(image_far_left, (0, 100, 0), (90, 255, 90))
         mask_left = cv2.inRange(image_left, (0, 100, 0), (90, 255, 90))
         mask_center = cv2.inRange(image_center, (0, 100, 0), (90, 255, 90))
         mask_right = cv2.inRange(image_right, (0, 100, 0), (90, 255, 90))
+        mask_far_right = cv2.inRange(image_far_right, (0, 100, 0), (90, 255, 90))
 
         # Find contours, if present
+        contours_far_left, _ = cv2.findContours(mask_far_left, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         contours_left, _ = cv2.findContours(mask_left, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         contours_center, _ = cv2.findContours(mask_center, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         contours_right, _ = cv2.findContours(mask_right, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        contours_far_right, _ = cv2.findContours(mask_far_right, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
-        return len(contours_left), len(contours_center), len(contours_right)
+        return len(contours_far_left), len(contours_left), len(contours_center), len(contours_right), len(contours_far_right)
 
     def handle_action(self, action, curr_state):
         # This function should accept an action (0, 1, 2...) and move the robot accordingly (left, right, forward).
         # It returns two things: new_state, which is the state (in tuple format) after this action has been performed.
         # and reward, which is the reward from this action.
-
         reward = self.determine_reward(action, curr_state)
 
         if action == 0:
-            left, right, duration = Direction.LEFT  # Left, action 0
+            left, right, duration = Direction.LEFT_L
         elif action == 1:
-            left, right, duration = Direction.RIGHT  # Right, action 1
+            left, right, duration = Direction.LEFT_M
+        elif action == 2:
+            left, right, duration = Direction.LEFT_S
         elif action == 3:
-            left, right, duration = Direction.RRIGHT  # Extreme right, action 3
+            left, right, duration = Direction.FORWARD
         elif action == 4:
-            left, right, duration = Direction.LLEFT  # Extreme left, action 4
+            left, right, duration = Direction.RIGHT_S
+        elif action == 5:
+            left, right, duration = Direction.RIGHT_M
         else:
-            left, right, duration = Direction.FORWARD  # Forward, action 2
+            left, right, duration = Direction.RIGHT_L
 
         self.rob.move(left, right, duration)
         return self.handle_state(), reward  # New_state, reward
@@ -316,14 +337,12 @@ def main():
 
     else:
         env.start_environment()
-        filename_rewards = f"results/reward_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
-        filename_food_amount = f"results/food_amount_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
-        filename_q_table = f"results/q_table_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
-        filename_step_counter = f"results/step_counter_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle"
-        env.stats.save_rewards(filename_rewards)
-        env.stats.save_food_amount(filename_food_amount)
-        env.stats.save_step_counter(filename_step_counter)
-        env.store_q_table(filename_q_table)
+
+        # Save all data (rewards, food collected, steps done per simulation, and the Q-table.
+        env.stats.save_rewards(f"results/reward_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle")
+        env.stats.save_food_amount(f"results/food_amount_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle")
+        env.stats.save_step_counter(f"results/step_counter_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle")
+        env.store_q_table(f"results/q_table_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle")
 
 
 if __name__ == "__main__":
