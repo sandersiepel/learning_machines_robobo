@@ -30,8 +30,8 @@ class Direction:
     LEFT = (-5, 5, 300)  # Action: 0, left
     RIGHT = (5, -5, 300)  # Action: 1, right
     FORWARD = (25, 25, 300)  # Action: 2, forward
-    RRIGHT = (15, -15, 300)  # Action: 3, strong right
-    LLEFT = (-15, 15, 300)  # Action: 4, strong left
+    RRIGHT = (-15, 15, 300)  # Action: 3, strong right
+    LLEFT = (15, -15, 300)  # Action: 4, strong left
 
 
 # noinspection PyProtectedMember
@@ -154,6 +154,7 @@ class Environment:
 
     def determine_action(self, curr_state):
         if random.random() < (1 - self.EPSILON_LOW):
+            print('Random action...')
             return random.choice(self.action_space)
         else:
             return self.best_action_for_state(curr_state)
@@ -292,8 +293,7 @@ class Environment:
         self.rob.move(left, right, duration)
         return self.handle_state(), reward  # New_state, reward
 
-    @staticmethod
-    def determine_reward(action, curr_state):
+    def determine_reward(self, action, curr_state):
         # This function determines the reward an action should get, depending on whether or not rob is about to
         # collide with an object within the environment.\
         # Actions: left, right, forward, rright, lleft
@@ -343,7 +343,9 @@ class Environment:
                 print("we don't see anything, no hard turn so negative reward")
                 reward -= 10
 
-        print(f"Curr state: {curr_state}, action: {action}, received reward: {reward}\n")
+        print(f"Curr state: {curr_state}, action: {action}, received reward: {reward}")
+        print(f"Q-table for this state: {self.q_table[curr_state]}\n")
+
         return reward
 
     def update_q_table(self, best_action, curr_state):
