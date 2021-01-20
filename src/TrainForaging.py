@@ -243,7 +243,7 @@ class Environment:
 
         # Chop image vertically in two
         image_left_far = resultl[0:64, :, :]
-        image_left_close = resultl[64:128, : , :]
+        image_left_close = resultl[64:128, :, :]
 
         image_center_far = resultc[0:64, :, :]
         image_center_close = resultc[64:128:, :, :]
@@ -277,7 +277,6 @@ class Environment:
         # This function should accept an action (0, 1, 2...) and move the robot accordingly (left, right, forward).
         # It returns two things: new_state, which is the state (in tuple format) after this action has been performed.
         # and reward, which is the reward from this action.
-        reward = self.determine_reward(action, curr_state)
 
         if action == 0:
             left, right, duration = Direction.LEFT
@@ -290,15 +289,27 @@ class Environment:
         else:
             left, right, duration = Direction.RRIGHT
 
+        #check food
+        food1 = self.rob.collected_food()
+
         self.rob.move(left, right, duration)
+
+        #check food
+        food2 = self.rob.collected_food()
+        food_diff = food1 - food2
+        print(food_diff)
+
+        reward = self.determine_reward(action, curr_state, -food_diff)
         return self.handle_state(), reward  # New_state, reward
 
-    def determine_reward(self, action, curr_state):
+    def determine_reward(self, action, curr_state, food_diff):
         # This function determines the reward an action should get, depending on whether or not rob is about to
         # collide with an object within the environment.\
         # Actions: left, right, forward, rright, lleft
         # curr_state: contours_left_far, contours_left_close, contours_center_far, contours_center_close, contours_right_far, contours_right_close
         reward = 0
+        if food_diff > 0:
+            reward = 50 * food_diff
 
         # Blocks are close, go get em
         if curr_state[1] > 0 or curr_state[3] > 0 or curr_state[5] > 0:
@@ -306,42 +317,42 @@ class Environment:
             if curr_state[3] > 0:
                 if action == 2:  # If block is center, reward forward action
                     print("food is close and center, and we go forward, +10 reward")
-                    reward += 10
+                    reward += 1
                 else:
                     print("food is close and center, and we don't go forward, -10 reward")
-                    reward -= 10  # And punish other actions
+                    reward -= 1  # And punish other actions
 
             else:  # Block is either left close or right close
                 if action == 0 or action == 1:  # We should do a small turn, so action 0 or 1
                     print("food is close but not in center, turning so positive reward")
-                    reward += 10
+                    reward += 1
                 else:  # And if we don't, punish
                     print("food is close but not in center, not turning so negative reward")
-                    reward -= 10
+                    reward -= 1
 
         elif curr_state[0] > 0 or curr_state[2] > 0 or curr_state[4] > 0:  # There are no close blocks, only far
             if curr_state[2] > 0:  # If center far is a block, move forward
                 if action == 2:
                     print("food is far and in center, forward so positive reward")
-                    reward += 10
+                    reward += 1
                 else:
                     print("food is far and in center but not forward, so negative reward")
-                    reward -= 10
+                    reward -= 1
             else:  # If left/right far is a block and not in center, turn slightly (action 0 or 1)
                 if action == 0 or action == 1:
                     print("food is far and not in center, slight turn so positive reward")
-                    reward += 10
+                    reward += 1
                 else:
                     print("food is far and not in center, no slight turn so negative reward")
-                    reward -= 10  # If we don't slightly turn, punish
+                    reward -= 1  # If we don't slightly turn, punish
 
         else:  # No block at all
             if action == 3:  # We see nothing, so hard turn
                 print("we don't see anything, hard turn RIGHT so positive reward")
-                reward += 10
+                reward += 1
             else:  # If we don't do a hard turn right, punish
                 print("we don't see anything, no hard turn so negative reward")
-                reward -= 10
+                reward -= 1
 
         print(f"Curr state: {curr_state}, action: {action}, received reward: {reward}")
         print(f"Q-table for this state: {self.q_table[curr_state]}\n")
@@ -351,7 +362,12 @@ class Environment:
     def update_q_table(self, best_action, curr_state):
         # This function updates the Q-table accordingly to the current state of rob.
         # First, we determine the new state we end in if we would play our current best action, given our current state.
+
+        # check food amount
+
         new_state, reward = self.handle_action(best_action, curr_state)
+
+        #check food amount
 
         # Then we calculate the reward we would get in this new state.
         max_future_q = np.amax(self.q_table[new_state])
@@ -364,7 +380,10 @@ class Environment:
 
         # And lastly, update the value in the Q-table.
         self.q_table[curr_state][best_action] = new_q
-
+        # print(f"old Q: {current_q}")
+        # print(f"new Q: {new_q}")
+        # print(f"max Q: {max_future_q}")
+        # print(f"reward: {reward}")
         return reward
 
 
