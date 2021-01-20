@@ -26,15 +26,11 @@ EXPERIMENT_NAME = 'train3'
 
 
 class Direction:
-    LEFT_S = (-25, 25, 300)
-    LEFT_M = (-25, 25, 530)
-    LEFT_L = (-40, 40, 900)
-
-    FORWARD = (25, 25, 300)
-
-    RIGHT_S = (25, -25, 300)
-    RIGHT_M = (25, -25, 530)
-    RIGHT_L = (40, -40, 900)
+    LEFT = (-15, 15, 300)  # Action: 0, left
+    RIGHT = (15, -15, 300)  # Action: 1, right
+    FORWARD = (25, 25, 300)  # Action: 2, forward
+    RRIGHT = (25, -25, 300)  # Action: 3, strong right
+    LLEFT = (-25, 25, 300)  # Action: 4, strong left
 
 
 # noinspection PyProtectedMember
@@ -52,7 +48,7 @@ class Environment:
 
     IP_ADDRESS = socket.gethostbyname(socket.gethostname())  # Grabs local IP address (192.168.x.x) for your machine.
 
-    action_space = [0, 1, 2, 3, 4, 5, 6]  # All of our available actions. Find definitions in the Direction class.
+    action_space = [0, 1, 2, 3, 4]  # All of our available actions. Find definitions in the Direction class.
     iteration_counter, epsilon_counter = 0, 0
 
     # The epsilon_increase determines when the epsilon should be increased. This happens gradually from EPSILON_LOW
@@ -95,7 +91,7 @@ class Environment:
                 self.change_epsilon()  # Check if we should increase epsilon or not.
                 self.iteration_counter += 1  # Keep track of how many actions this simulation does.
             else:
-                # self.print_q_table()
+                self.print_q_table()
 
                 # Reset the counters
                 self.stats.add_food(i, self.rob.collected_food())
@@ -192,16 +188,12 @@ class Environment:
         # Since observation space is very large, we need to trim it down (bucketing) to only a select amount of
         # possible states, e.g. 4 for each sensor (4^8 = 65k). Or: use less sensors (no rear sensors for task 1).
         # E.g. the size (5, 5, 5, 5, 5) denotes each sensor, with its amount of possible states (see func handle_state).
-        return np.random.uniform(low=6, high=6, size=([2, 2, 2, 2, 2] + [len(self.action_space)]))
+        return np.random.uniform(low=6, high=6, size=([2, 2, 2] + [len(self.action_space)]))
 
     def handle_state(self):
-        contours_far_left, contours_left, contours_center, contours_right, contours_far_right = self.determine_food()
+        contours_left, contours_center, contours_right = self.determine_food()
 
         res = tuple()
-        if contours_far_left > 0:
-            res += (1,)
-        else:
-            res += (0,)
         if contours_left > 0:
             res += (1,)
         else:
@@ -214,10 +206,6 @@ class Environment:
             res += (1,)
         else:
             res += (0,)
-        if contours_far_right > 0:
-            res += (1,)
-        else:
-            res += (0,)
 
         return res
 
@@ -225,27 +213,21 @@ class Environment:
         image = self.rob.get_image_front()
 
         # Chop image vertically in two
-        image_far_left = image[:, 0:25, :]
-        image_left = image[:, 25:50, :]
-        image_center = image[:, 50:78, :]
-        image_right = image[:, 78:103, :]
-        image_far_right = image[:, 103:128, :]
+        image_left = image[:, 0:30, :]
+        image_center = image[:, 30:98, :]
+        image_right = image[:, 98:128, :]
 
         # Create mask for color green
-        mask_far_left = cv2.inRange(image_far_left, (0, 100, 0), (90, 255, 90))
         mask_left = cv2.inRange(image_left, (0, 100, 0), (90, 255, 90))
         mask_center = cv2.inRange(image_center, (0, 100, 0), (90, 255, 90))
         mask_right = cv2.inRange(image_right, (0, 100, 0), (90, 255, 90))
-        mask_far_right = cv2.inRange(image_far_right, (0, 100, 0), (90, 255, 90))
 
         # Find contours, if present
-        contours_far_left, _ = cv2.findContours(mask_far_left, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         contours_left, _ = cv2.findContours(mask_left, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         contours_center, _ = cv2.findContours(mask_center, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         contours_right, _ = cv2.findContours(mask_right, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        contours_far_right, _ = cv2.findContours(mask_far_right, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
-        return len(contours_far_left), len(contours_left), len(contours_center), len(contours_right), len(contours_far_right)
+        return len(contours_left), len(contours_center), len(contours_right)
 
     def handle_action(self, action, curr_state):
         # This function should accept an action (0, 1, 2...) and move the robot accordingly (left, right, forward).
@@ -254,19 +236,15 @@ class Environment:
         reward = self.determine_reward(action, curr_state)
 
         if action == 0:
-            left, right, duration = Direction.LEFT_L
+            left, right, duration = Direction.LEFT
         elif action == 1:
-            left, right, duration = Direction.LEFT_M
+            left, right, duration = Direction.RIGHT
         elif action == 2:
-            left, right, duration = Direction.LEFT_S
-        elif action == 3:
             left, right, duration = Direction.FORWARD
-        elif action == 4:
-            left, right, duration = Direction.RIGHT_S
-        elif action == 5:
-            left, right, duration = Direction.RIGHT_M
+        elif action == 3:
+            left, right, duration = Direction.LLEFT
         else:
-            left, right, duration = Direction.RIGHT_L
+            left, right, duration = Direction.RRIGHT
 
         self.rob.move(left, right, duration)
         return self.handle_state(), reward  # New_state, reward
