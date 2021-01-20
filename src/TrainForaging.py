@@ -17,13 +17,12 @@ import cv2
 import pandas as pd
 from itertools import product
 
-
 MULTIPLE_RUNS = True  # Doing an experiment multiple times, not required for normal training.
 N_RUNS = 5  # How many times an experiment is done if MULTIPLE_RUNS = True.
 EXPERIMENT_COUNTER = 0  # Only needed for training over multiple experiments (MULTIPLE_RUNS = "True")
 
 # For each time training, give this a unique name so the data can be saved with a unique name.
-EXPERIMENT_NAME = 'train_7_mr'
+EXPERIMENT_NAME = 'train_8_mr'
 
 
 class Direction:
@@ -55,7 +54,8 @@ class Environment:
     # The epsilon_increase determines when the epsilon should be increased. This happens gradually from EPSILON_LOW
     # to EPSILON_HIGH during the amount of allowed iterations. So when MAX_ITERATIONS reaches its limit, so does
     # the epsilon value.
-    epsilon_increase = int((((MAX_ITERATIONS * MAX_SIMULATION_ITERATIONS) // (EPSILON_HIGH - EPSILON_LOW) * 100) / 10_000) * 0.7)
+    epsilon_increase = int(
+        (((MAX_ITERATIONS * MAX_SIMULATION_ITERATIONS) // (EPSILON_HIGH - EPSILON_LOW) * 100) / 10_000) * 0.7)
 
     def __init__(self):
         signal.signal(signal.SIGINT, self.terminate_program)
@@ -66,10 +66,12 @@ class Environment:
     def start_environment(self):
         # Initialize the start position handles + the robot handle
         robot, handles = self.initialize_handles()
-        self.rob.set_phone_tilt(np.pi/6, 100)
+        self.rob.set_phone_tilt(np.pi / 6, 100)
 
         for i in trange(self.MAX_ITERATIONS):  # Nifty, innit?
-            print(f"Starting simulation nr. {i+1}/{self.MAX_ITERATIONS}. Epsilon: {self.EPSILON_LOW}. Q-table size: {self.q_table.size}, shape: {self.q_table.shape}")
+            print(
+                f"Starting simulation nr. {i + 1}/{self.MAX_ITERATIONS}. Epsilon: {self.EPSILON_LOW}. "
+                f"Q-table size: {self.q_table.size}, shape: {self.q_table.shape}")
 
             # TODO enable random start positions
             # Each new simulation, find a new (random) start position based on the provided handles.
@@ -225,31 +227,31 @@ class Environment:
 
     def determine_food(self):
         image = self.rob.get_image_front()
-
-        maskl = np.zeros(image.shape, dtype=np.uint8)
-        maskr = np.zeros(image.shape, dtype=np.uint8)
-        maskc = np.full(image.shape, 255, dtype=np.uint8)
-
-        maskc = cv2.ellipse(maskc, (0, 128), (50, 90), 180, 0, 180, (0, 0, 0), -1)
-        maskc = cv2.ellipse(maskc, (128, 128), (50, 90), 180, 0, 180, (0, 0, 0), -1)
-
-        maskl = cv2.ellipse(maskl, (0, 128), (50, 90), 180, 0, 180, (255, 255, 255), -1)
-        maskr = cv2.ellipse(maskr, (128, 128), (50, 90), 180, 0, 180, (255, 255, 255), -1)
-
-        resultc = cv2.bitwise_and(image, maskc)
-
-        resultl = cv2.bitwise_and(image, maskl)
-        resultr = cv2.bitwise_and(image, maskr)
+        #
+        # maskl = np.zeros(image.shape, dtype=np.uint8)
+        # maskr = np.zeros(image.shape, dtype=np.uint8)
+        # maskc = np.full(image.shape, 255, dtype=np.uint8)
+        #
+        # maskc = cv2.ellipse(maskc, (0, 128), (50, 90), 180, 0, 180, (0, 0, 0), -1)
+        # maskc = cv2.ellipse(maskc, (128, 128), (50, 90), 180, 0, 180, (0, 0, 0), -1)
+        #
+        # maskl = cv2.ellipse(maskl, (0, 128), (50, 90), 180, 0, 180, (255, 255, 255), -1)
+        # maskr = cv2.ellipse(maskr, (128, 128), (50, 90), 180, 0, 180, (255, 255, 255), -1)
+        #
+        # resultc = cv2.bitwise_and(image, maskc)
+        #
+        # resultl = cv2.bitwise_and(image, maskl)
+        # resultr = cv2.bitwise_and(image, maskr)
 
         # Chop image vertically in two
-        image_left_far = resultl[0:64, :, :]
-        image_left_close = resultl[64:128, :, :]
+        image_left_far = image[0:64, 0:30, :]
+        image_left_close = image[64:128, 0:30, :]
 
-        image_center_far = resultc[0:64, :, :]
-        image_center_close = resultc[64:128:, :, :]
+        image_center_far = image[0:64, 30:98, :]
+        image_center_close = image[64:128:, 30:98, :]
 
-        image_right_far = resultr[0:64, :, :]
-        image_right_close = resultr[64:128:, :, :]
+        image_right_far = image[0:64, 98:128, :]
+        image_right_close = image[64:128:, 98:128, :]
 
         # Create mask for color green
         mask_left_far = cv2.inRange(image_left_far, (0, 100, 0), (90, 255, 90))
@@ -271,7 +273,8 @@ class Environment:
         contours_right_far, _ = cv2.findContours(mask_right_far, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         contours_right_close, _ = cv2.findContours(mask_right_close, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
-        return len(contours_left_far), len(contours_left_close), len(contours_center_far), len(contours_center_close), len(contours_right_far), len(contours_right_close)
+        return len(contours_left_far), len(contours_left_close), len(contours_center_far), len(
+            contours_center_close), len(contours_right_far), len(contours_right_close)
 
     def handle_action(self, action, curr_state):
         # This function should accept an action (0, 1, 2...) and move the robot accordingly (left, right, forward).
@@ -289,24 +292,25 @@ class Environment:
         else:
             left, right, duration = Direction.RRIGHT
 
-        # check food before movement
+        # Check food before movement, move, check food again
         food1 = self.rob.collected_food()
-
         self.rob.move(left, right, duration)
+        food_diff = food1 - self.rob.collected_food()
 
-        # check food after movement
-        food2 = self.rob.collected_food()
-        food_diff = food1 - food2
-
-        reward = self.determine_reward(action, curr_state, -food_diff)
+        # Return food diff as well to determine whether this action in this state resulted in food eaten
+        reward = self.determine_reward(action, curr_state, - food_diff)
         return self.handle_state(), reward  # New_state, reward
 
-    def determine_reward(self, action, curr_state, food_diff):
+    @staticmethod
+    def determine_reward(action, curr_state, food_diff):
         # This function determines the reward an action should get, depending on whether or not rob is about to
         # collide with an object within the environment.\
         # Actions: left, right, forward, rright, lleft
-        # curr_state: contours_left_far, contours_left_close, contours_center_far, contours_center_close, contours_right_far, contours_right_close
+        # curr_state: contours_left_far, contours_left_close, contours_center_far, contours_center_close,
+        # contours_right_far, contours_right_close
         reward = 0
+
+        # Touching food is the big reward
         if food_diff > 0:
             reward = 50 * food_diff
 
@@ -315,62 +319,44 @@ class Environment:
             # Block is in center, close
             if curr_state[3] > 0:
                 if action == 2:  # If block is center, reward forward action
-                    print("food is close and center, and we go forward, +10 reward")
                     reward += 1
                 else:
-                    print("food is close and center, and we don't go forward, -10 reward")
                     reward -= 5  # And punish other actions
 
             else:  # Block is either left close or right close
                 if action == 0 and curr_state[1] > 0:  # We should do a small turn, so action 0 or 1
-                    print("food is close but not in center, turning so positive reward")
                     reward += 1
                 elif action == 1 and curr_state[5] > 0:
                     reward += 1
                 else:  # And if we don't, punish
-                    print("food is close but not in center, not turning so negative reward")
                     reward -= 5
 
         elif curr_state[0] > 0 or curr_state[2] > 0 or curr_state[4] > 0:  # There are no close blocks, only far
             if curr_state[2] > 0:  # If center far is a block, move forward
                 if action == 2:
-                    print("food is far and in center, forward so positive reward")
                     reward += 1
                 else:
-                    print("food is far and in center but not forward, so negative reward")
                     reward -= 5
             else:  # If left/right far is a block and not in center, turn slightly (action 0 or 1)
                 if action == 0 and curr_state[0] > 1:
-                    print("food is far and not in center, slight turn so positive reward")
                     reward += 1
                 elif action == 1 and curr_state[4] > 0:
                     reward += 1
                 else:
-                    print("food is far and not in center, no slight turn so negative reward")
                     reward -= 5  # If we don't slightly turn, punish
 
         else:  # No block at all
             if action == 3:  # We see nothing, so hard turn
-                print("we don't see anything, hard turn RIGHT so positive reward")
                 reward += 1
             else:  # If we don't do a hard turn right, punish
-                print("we don't see anything, no hard turn so negative reward")
                 reward -= 5
-
-        print(f"Curr state: {curr_state}, action: {action}, received reward: {reward}")
-        print(f"Q-table for this state: {self.q_table[curr_state]}\n")
 
         return reward
 
     def update_q_table(self, best_action, curr_state):
         # This function updates the Q-table accordingly to the current state of rob.
         # First, we determine the new state we end in if we would play our current best action, given our current state.
-
-        # check food amount
-
         new_state, reward = self.handle_action(best_action, curr_state)
-
-        #check food amount
 
         # Then we calculate the reward we would get in this new state.
         max_future_q = np.amax(self.q_table[new_state])
@@ -379,14 +365,12 @@ class Environment:
         current_q = self.q_table[curr_state][best_action]
 
         # Calculate the new Q-value with the common formula
-        new_q = (1 - self.LEARNING_RATE) * current_q + self.LEARNING_RATE * (reward + self.DISCOUNT_FACTOR * max_future_q)
+        new_q = (1 - self.LEARNING_RATE) * current_q + self.LEARNING_RATE * (
+                reward + self.DISCOUNT_FACTOR * max_future_q)
 
         # And lastly, update the value in the Q-table.
         self.q_table[curr_state][best_action] = new_q
-        # print(f"old Q: {current_q}")
-        # print(f"new Q: {new_q}")
-        # print(f"max Q: {max_future_q}")
-        # print(f"reward: {reward}")
+
         return reward
 
 
@@ -402,7 +386,7 @@ def main():
         global EXPERIMENT_COUNTER
 
         for i in range(N_RUNS):
-            print(f"Begin experiment {i+1}/{N_RUNS}")
+            print(f"Begin experiment {i + 1}/{N_RUNS}")
             env.EPSILON_LOW = epsilon_low
             EXPERIMENT_COUNTER += 1
 
@@ -422,10 +406,14 @@ def main():
         env.start_environment()
 
         # Save all data (rewards, food collected, steps done per simulation, and the Q-table.
-        env.stats.save_rewards(f"results/reward_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle")
-        env.stats.save_food_amount(f"results/food_amount_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle")
-        env.stats.save_step_counter(f"results/step_counter_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle")
-        env.store_q_table(f"results/q_table_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle")
+        env.stats.save_rewards(
+            f"results/reward_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle")
+        env.stats.save_food_amount(
+            f"results/food_amount_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle")
+        env.stats.save_step_counter(
+            f"results/step_counter_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle")
+        env.store_q_table(
+            f"results/q_table_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle")
 
 
 if __name__ == "__main__":
