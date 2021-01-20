@@ -15,6 +15,7 @@ from tqdm import tqdm, trange
 import socket
 import cv2
 import pandas as pd
+from itertools import product
 
 
 MULTIPLE_RUNS = False  # Doing an experiment multiple times, not required for normal training.
@@ -36,7 +37,7 @@ class Direction:
 # noinspection PyProtectedMember
 class Environment:
     # All of our constants that together define a training set-up.
-    MAX_ITERATIONS = 50  # Amount of simulations until termination.
+    MAX_ITERATIONS = 20  # Amount of simulations until termination.
     MAX_SIMULATION_ITERATIONS = 100  # Amount of actions within one simulation. Actions = Q-table updates.
     FOOD_AMOUNT = 6
 
@@ -114,10 +115,8 @@ class Environment:
             pickle.dump(self.q_table, fp)
 
     def print_q_table(self):
-        arrays = [["0", "0", "0", "0", "1", "1", "1", "1"],
-                  ["0", "0", "1", "1", "0", "0", "1", "1"],
-                  ["0", "1", "0", "1", "0", "1", "0", "1"]]
-        tuples = list(zip(*arrays))
+
+        tuples = list(product(["0", "1"], repeat=3))
 
         index = pd.MultiIndex.from_tuples(tuples, names=["left", "center", "right"])
         s = pd.DataFrame(np.nan, index=index, columns=["left", "right", "center", "hard left", "hard right"])

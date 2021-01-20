@@ -20,7 +20,7 @@ N_RUNS = 5  # How many times an experiment is done if MULTIPLE_RUNS = True.
 EXPERIMENT_COUNTER = 0  # Only needed for training over multiple experiments (MULTIPLE_RUNS = "True")
 
 # For each time training, give this a unique name so the data can be saved with a unique name.
-EXPERIMENT_NAME = 'train_week1_1'
+EXPERIMENT_NAME = 'steady_epsilon'
 
 
 class Direction:
@@ -39,9 +39,9 @@ class Environment:
 
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .95
-    EPSILON_LOW = 0.6  # Start epsilon value. This gradually increases.
-    EPSILON_HIGH = 0.95  # End epsilon value
-    EPSILON_INCREASE = .01  # How much should we increase the epsilon value with, each time?
+    EPSILON_LOW = 0.9  # Start epsilon value. This gradually increases.
+    EPSILON_HIGH = 1  # End epsilon value
+    EPSILON_INCREASE = 0  # How much should we increase the epsilon value with, each time?
 
     IP_ADDRESS = socket.gethostbyname(socket.gethostname())  # Grabs local IP address (192.168.x.x) for your machine.
 
