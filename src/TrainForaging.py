@@ -18,11 +18,11 @@ import pandas as pd
 from itertools import product
 
 MULTIPLE_RUNS = True  # Doing an experiment multiple times, not required for normal training.
-N_RUNS = 5  # How many times an experiment is done if MULTIPLE_RUNS = True.
+N_RUNS = 4  # How many times an experiment is done if MULTIPLE_RUNS = True.
 EXPERIMENT_COUNTER = 0  # Only needed for training over multiple experiments (MULTIPLE_RUNS = "True")
 
 # For each time training, give this a unique name so the data can be saved with a unique name.
-EXPERIMENT_NAME = 'train_8_mr'
+EXPERIMENT_NAME = 'CRS_ellipse_draw4'
 
 
 class Direction:
@@ -227,31 +227,31 @@ class Environment:
 
     def determine_food(self):
         image = self.rob.get_image_front()
-        #
-        # maskl = np.zeros(image.shape, dtype=np.uint8)
-        # maskr = np.zeros(image.shape, dtype=np.uint8)
-        # maskc = np.full(image.shape, 255, dtype=np.uint8)
-        #
-        # maskc = cv2.ellipse(maskc, (0, 128), (50, 90), 180, 0, 180, (0, 0, 0), -1)
-        # maskc = cv2.ellipse(maskc, (128, 128), (50, 90), 180, 0, 180, (0, 0, 0), -1)
-        #
-        # maskl = cv2.ellipse(maskl, (0, 128), (50, 90), 180, 0, 180, (255, 255, 255), -1)
-        # maskr = cv2.ellipse(maskr, (128, 128), (50, 90), 180, 0, 180, (255, 255, 255), -1)
-        #
-        # resultc = cv2.bitwise_and(image, maskc)
-        #
-        # resultl = cv2.bitwise_and(image, maskl)
-        # resultr = cv2.bitwise_and(image, maskr)
+
+        maskl = np.zeros(image.shape, dtype=np.uint8)
+        maskr = np.zeros(image.shape, dtype=np.uint8)
+        maskc = np.full(image.shape, 255, dtype=np.uint8)
+
+        maskc = cv2.ellipse(maskc, (0, 128), (50, 90), 180, 0, 180, (0, 0, 0), -1)
+        maskc = cv2.ellipse(maskc, (128, 128), (50, 90), 180, 0, 180, (0, 0, 0), -1)
+
+        maskl = cv2.ellipse(maskl, (0, 128), (50, 90), 180, 0, 180, (255, 255, 255), -1)
+        maskr = cv2.ellipse(maskr, (128, 128), (50, 90), 180, 0, 180, (255, 255, 255), -1)
+
+        resultc = cv2.bitwise_and(image, maskc)
+
+        resultl = cv2.bitwise_and(image, maskl)
+        resultr = cv2.bitwise_and(image, maskr)
 
         # Chop image vertically in two
-        image_left_far = image[0:64, 0:30, :]
-        image_left_close = image[64:128, 0:30, :]
+        image_left_far = resultl[0:64, :, :]
+        image_left_close = resultl[64:128, :, :]
 
-        image_center_far = image[0:64, 30:98, :]
-        image_center_close = image[64:128:, 30:98, :]
+        image_center_far = resultc[0:64, :, :]
+        image_center_close = resultc[64:128, :, :]
 
-        image_right_far = image[0:64, 98:128, :]
-        image_right_close = image[64:128:, 98:128, :]
+        image_right_far = resultr[0:64, :, :]
+        image_right_close = resultr[64:128, :, :]
 
         # Create mask for color green
         mask_left_far = cv2.inRange(image_left_far, (0, 100, 0), (90, 255, 90))
