@@ -69,7 +69,7 @@ class Environment:
         robot, handles = self.initialize_handles()
 
         for i in trange(self.MAX_ITERATIONS):  # Nifty, innit?
-            # print(f"Starting simulation nr. {i+1}/{self.MAX_ITERATIONS}. Epsilon: {self.EPSILON_LOW}. Q-table size: {self.q_table.size}")
+            print(f"Starting simulation nr. {i+1}/{self.MAX_ITERATIONS}. Epsilon: {self.EPSILON_LOW}. Q-table size: {self.q_table.size}")
 
             # Each new simulation, find a new (random) start position based on the provided handles.
             start_pos, robot = self.determine_start_position(handles, robot)

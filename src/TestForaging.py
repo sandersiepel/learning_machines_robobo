@@ -3,7 +3,7 @@ from TrainForaging import Environment
 import vrep
 import random
 
-FILENAME = "results/train_8_mr/q_table_data_50_250_train_8_mr_1.pickle"
+FILENAME = "results/CRS_ellipse_draw4/q_table_data_50_250_CRS_ellipse_draw4_3.pickle"
 M_FILENAME = "results/ChangedEpsilon/q_table_data_100_500_ChangedEpsilon_"
 SIMULATIONS = 20
 ITERATIONS = 250
