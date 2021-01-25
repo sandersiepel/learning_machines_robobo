@@ -59,24 +59,24 @@ class Environment:
     def __init__(self):
         signal.signal(signal.SIGINT, self.terminate_program)
 
-        self.rob = robobo.SimulationRobobo().connect(address=self.IP_ADDRESS, port=19997)
-        self.prey = robobo.SimulationRoboboPrey().connect(address=self.IP_ADDRESS, port=19989)
-        self.prey_controller = prey.Prey(robot=self.prey, level=2)
+        self.rob, self.prey, self.prey_controller = None, None, None
 
         # Stuff for keeping track of stats/data
         self.stats = Statistics(self.MAX_ITERATIONS, self.MAX_SIMULATION_ITERATIONS)
         self.q_table = self.initialize_q_table()
 
     def start_environment(self):
-        # Initialize the start position handles + the robot handle
-        self.rob.set_phone_tilt(np.pi / 6, 100)
-
         for i in trange(self.MAX_ITERATIONS):  # Nifty, innit?
             print(
                 f"Starting simulation nr. {i + 1}/{self.MAX_ITERATIONS}. Epsilon: {self.EPSILON_LOW}. "
                 f"Q-table size: {self.q_table.size}, shape: {self.q_table.shape}")
 
+            self.rob = robobo.SimulationRobobo().connect(address=self.IP_ADDRESS, port=19997)
             self.rob.play_simulation()
+            self.rob.set_phone_tilt(np.pi / 6, 100)
+
+            self.prey = robobo.SimulationRoboboPrey().connect(address=self.IP_ADDRESS, port=19989)
+            self.prey_controller = prey.Prey(robot=self.prey, level=2)
             self.prey_controller.start()
 
             # A simulation runs until valid_environment returns False.
