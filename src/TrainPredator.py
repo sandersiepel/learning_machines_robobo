@@ -37,29 +37,24 @@ class Direction:
 class Environment:
     # All of our constants that together define a training set-up.
     MAX_ITERATIONS = 50  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 250  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_SIMULATION_ITERATIONS = 50  # Amount of actions within one simulation. Actions = Q-table updates.
 
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .8
-    EPSILON_LOW = 0.9  # Start epsilon value. This gradually increases.
-    EPSILON_HIGH = 0.91  # End epsilon value
-    EPSILON_INCREASE = 0  # How much should we increase the epsilon value with, each time?
+    EPSILON = 0.9  # Start epsilon value.
 
     IP_ADDRESS = socket.gethostbyname(socket.gethostname())  # Grabs local IP address (192.168.x.x) for your machine.
 
     action_space = [0, 1, 2, 3, 4]  # All of our available actions. Find definitions in the Direction class.
-    iteration_counter, epsilon_counter = 0, 0
-
-    # The epsilon_increase determines when the epsilon should be increased. This happens gradually from EPSILON_LOW
-    # to EPSILON_HIGH during the amount of allowed iterations. So when MAX_ITERATIONS reaches its limit, so does
-    # the epsilon value.
-    epsilon_increase = int(
-        (((MAX_ITERATIONS * MAX_SIMULATION_ITERATIONS) // (EPSILON_HIGH - EPSILON_LOW) * 100) / 10_000) * 0.7)
+    iteration_counter = 0
 
     def __init__(self):
         signal.signal(signal.SIGINT, self.terminate_program)
-
-        self.rob, self.prey, self.prey_controller = None, None, None
+        self.rob = robobo.SimulationRobobo().connect(address=self.IP_ADDRESS, port=19997)
+        self.rob.play_simulation()
+        self.prey = robobo.SimulationRoboboPrey().connect(address=self.IP_ADDRESS, port=19989)
+        self.prey_controller = prey.Prey(robot=self.prey, level=2)
+        self.prey_controller.start()
 
         # Stuff for keeping track of stats/data
         self.stats = Statistics(self.MAX_ITERATIONS, self.MAX_SIMULATION_ITERATIONS)
@@ -68,16 +63,10 @@ class Environment:
     def start_environment(self):
         for i in trange(self.MAX_ITERATIONS):  # Nifty, innit?
             print(
-                f"Starting simulation nr. {i + 1}/{self.MAX_ITERATIONS}. Epsilon: {self.EPSILON_LOW}. "
+                f"Starting simulation nr. {i + 1}/{self.MAX_ITERATIONS}.. "
                 f"Q-table size: {self.q_table.size}, shape: {self.q_table.shape}")
 
-            self.rob = robobo.SimulationRobobo().connect(address=self.IP_ADDRESS, port=19997)
-            self.rob.play_simulation()
             self.rob.set_phone_tilt(np.pi / 6, 100)
-
-            self.prey = robobo.SimulationRoboboPrey().connect(address=self.IP_ADDRESS, port=19989)
-            self.prey_controller = prey.Prey(robot=self.prey, level=2)
-            self.prey_controller.start()
 
             # A simulation runs until valid_environment returns False.
             while self.valid_environment():
@@ -91,39 +80,20 @@ class Environment:
                 reward = self.update_q_table(best_action, curr_state)
 
                 self.stats.add_reward(i, self.iteration_counter, reward)  # Add the reward for visualization purposes.
-                self.change_epsilon()  # Check if we should increase epsilon or not.
                 self.iteration_counter += 1  # Keep track of how many actions this simulation does.
-            else:
-                # Reset the counters
-                self.stats.add_food(i, self.rob.collected_food())
-                self.stats.add_step_counter(i, self.iteration_counter)
-                self.iteration_counter = 0
-                self.rob.stop_world()
-                self.rob.wait_for_ping()  # Maybe we should wait for ping so we avoid errors. Might not be necessary.
 
-    @staticmethod
-    def read_q_table(filename):
-        # This function loads an existing Q-table.
-        with open(filename, 'rb') as fp:
-            q_table = pickle.load(fp)
-        return q_table
+            self.stats.add_step_counter(i, self.iteration_counter)
+            self.iteration_counter = 0
 
-    def store_q_table(self, name):
-        with open(name, 'wb') as fp:
-            pickle.dump(self.q_table, fp)
-
-    def print_q_table(self):
-        tuples = list(product(["0", "1"], repeat=3))
-
-        index = pd.MultiIndex.from_tuples(tuples, names=["left", "center", "right"])
-        s = pd.DataFrame(np.nan, index=index, columns=["left", "right", "center", "hard left", "hard right"])
-
-        for i in range(2):
-            for j in range(2):
-                for k in range(2):
-                    s.loc[(str(i), str(j), str(k))] = self.q_table[(i, j, k)]
-        s = s.astype(int)
-        print(s.head(8))
+            self.prey_controller.stop()
+            self.prey_controller.join()
+            self.prey.disconnect()
+            self.rob.stop_world()
+            self.rob.wait_for_ping()
+            self.rob.play_simulation()
+            self.prey = robobo.SimulationRoboboPrey().connect(address=self.IP_ADDRESS, port=19989)
+            self.prey_controller = prey.Prey(robot=self.prey, level=2)
+            self.prey_controller.start()
 
     def best_action_for_state(self, state):
         # Given a state (tuple format), what is the best action we take, i.e. for which action is the Q-value highest?
@@ -134,16 +104,15 @@ class Environment:
         return best_action
 
     def determine_action(self, curr_state):
-        if random.random() < (1 - self.EPSILON_LOW):
+        if random.random() < (1 - self.EPSILON):
             return random.choice(self.action_space)
         else:
             return self.best_action_for_state(curr_state)
 
     @staticmethod
-    def terminate_program(self, test1, test2):
+    def terminate_program(test1, test2):
         # Only do this for training and not for testing, to avoid overwriting a valid Q-table.
         print(f"Ctrl-C received, terminating program.")
-        # self.store_q_table()
         sys.exit(1)
 
     def valid_environment(self):
@@ -151,16 +120,6 @@ class Environment:
         c1 = self.iteration_counter >= self.MAX_SIMULATION_ITERATIONS
 
         return False if any([c1]) else True
-
-    def change_epsilon(self):
-        # This function changes the epsilon value if needed. Only does so if we did x amount of iterations, and the
-        # current epsilon value is smaller than the epsilon limit (EPSILON_HIGH).
-        if self.epsilon_counter == self.epsilon_increase:
-            if self.EPSILON_LOW < self.EPSILON_HIGH:
-                self.EPSILON_LOW += self.EPSILON_INCREASE
-                self.epsilon_counter = 0
-        else:
-            self.epsilon_counter += 1
 
     def initialize_q_table(self):
         # Initialize Q-table for states * action pairs with default values (0).
@@ -198,6 +157,7 @@ class Environment:
         else:
             res += (0,)
 
+        print(f'State: {res}')
         return res
 
     def determine_food(self):
@@ -214,14 +174,14 @@ class Environment:
         image_right_close = image[64:128, 98:128, :]
 
         # Create mask for color green
-        mask_left_far = cv2.inRange(image_left_far, (0, 100, 0), (90, 255, 90))
-        mask_left_close = cv2.inRange(image_left_close, (0, 100, 0), (90, 255, 90))
+        mask_left_far = cv2.inRange(image_left_far, (0, 0, 100), (140, 140, 255))
+        mask_left_close = cv2.inRange(image_left_close, (0, 0, 100), (140, 140, 255))
 
-        mask_center_far = cv2.inRange(image_center_far, (0, 100, 0), (90, 255, 90))
-        mask_center_close = cv2.inRange(image_center_close, (0, 100, 0), (90, 255, 90))
+        mask_center_far = cv2.inRange(image_center_far, (0, 0, 100), (140, 140, 255))
+        mask_center_close = cv2.inRange(image_center_close, (0, 0, 100), (140, 140, 255))
 
-        mask_right_far = cv2.inRange(image_right_far, (0, 100, 0), (90, 255, 90))
-        mask_right_close = cv2.inRange(image_right_close, (0, 100, 0), (90, 255, 90))
+        mask_right_far = cv2.inRange(image_right_far, (0, 0, 100), (140, 140, 255))
+        mask_right_close = cv2.inRange(image_right_close, (0, 0, 100), (140, 140, 255))
 
         # Find contours, if present
         contours_left_far, _ = cv2.findContours(mask_left_far, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
@@ -262,6 +222,47 @@ class Environment:
         # This function determines the reward an action should get
         # Actions: left, right, forward, rright, lleft
         reward = 0
+
+        if curr_state[1] > 0 or curr_state[3] > 0 or curr_state[5] > 0:
+            print('prey is in center, close')
+            # Block is in center, close
+            if curr_state[3] > 0:
+                if action == 2:  # If block is center, reward forward action
+                    reward += 1
+                else:
+                    reward -= 5  # And punish other actions
+
+            else:  # Block is either left close or right close
+                print('prey is left/right close')
+                if action == 0 and curr_state[1] > 0:  # We should do a small turn, so action 0 or 1
+                    reward += 1
+                elif action == 1 and curr_state[5] > 0:
+                    reward += 1
+                else:  # And if we don't, punish
+                    reward -= 5
+
+        elif curr_state[0] > 0 or curr_state[2] > 0 or curr_state[4] > 0:  # There are no close blocks, only far
+            if curr_state[2] > 0:  # If center far is a block, move forward
+                print('prey is far center')
+                if action == 2:
+                    reward += 1
+                else:
+                    reward -= 5
+            else:  # If left/right far is a block and not in center, turn slightly (action 0 or 1)
+                print('prey is far left/right')
+                if action == 0 and curr_state[0] > 1:
+                    reward += 1
+                elif action == 1 and curr_state[4] > 0:
+                    reward += 1
+                else:
+                    reward -= 5  # If we don't slightly turn, punish
+
+        else:  # No block at all
+            print('no prey at all')
+            if action == 3:  # We see nothing, so hard turn
+                reward += 1
+            else:  # If we don't do a hard turn right, punish
+                reward -= 5
 
         return reward
 
