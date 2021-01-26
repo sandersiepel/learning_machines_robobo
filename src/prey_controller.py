@@ -1,6 +1,7 @@
 import random
 import threading
 import numpy as np
+import vrep
 
 
 class Direction:
@@ -31,16 +32,22 @@ class Prey(StoppableThread):
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .8
     EPSILON = 0.9  # Start epsilon value.
+    action_space = [0, 1, 2, 3, 4]
+    physical_collision_counter = 0
+    collision_counter = 0
 
 
-    def __init__(self, robot, seed=42, log=None, level=2):
+    def __init__(self, robot, q_table=None, seed=42, log=None, level=2):
         super(Prey, self).__init__()
+        self.q_table = q_table
         self._log = log
         self._robot = robot
         # seed for the random function -> make reproducible the experiment
         self._seed = seed
         # default level is 2 -> medium
         self._level = level
+        _, self.collision_handle = vrep.simxGetCollisionHandle(self._robot._clientID, 'Hitbox0',
+                                                               vrep.simx_opmode_blocking)
 
     def _sensor_better_reading(self, sensors_values):
         """
@@ -57,6 +64,7 @@ class Prey(StoppableThread):
     def run(self):
         # TODO: read q-table
         while not self.stopped():
+            # print(self.q_table.shape)
             curr_state = self.handle_state()
 
             # Do we perform random action (due to epsilon < 1) or our best possible action?
@@ -147,9 +155,9 @@ class Prey(StoppableThread):
         # It also keeps track of the collision counter. If this counter exceeds its threshold (COLLISION_THRESHOLD)
         # then the environment should reset (to avoid rob getting stuck).
         try:
-            sensor_values = self._robot.read_irs()[3:]  # Should be absolute values (no log or anything).
+            sensor_values = self._robot.read_irs()  # Should be absolute values (no log or anything).
         except:
-            sensor_values = [0, 0, 0, 0, 0]
+            sensor_values = [0, 0, 0, 0, 0, 0, 0, 0]
 
         collision_far = any([0.13 <= i < 0.2 for i in sensor_values])
         collision_close = any([0 < i < 0.13 for i in sensor_values])
@@ -194,6 +202,41 @@ class Prey(StoppableThread):
         return reward
 
     def determine_action(self, curr_state):
-        return random.choice(self.action_space) if random.random() < (1 - self.EPSILON_LOW) else self.best_action_for_state(curr_state)
+        return random.choice(self.action_space) if random.random() < (1 - self.EPSILON) else self.best_action_for_state(curr_state)
 
+    def collision(self):
+        # This function checks whether rob is close to something or not. It returns the "distance", either "close", "far" or "nothing".
+        # It also keeps track of the collision counter. If this counter exceeds its threshold (COLLISION_THRESHOLD)
+        # then the environment should reset (to avoid rob getting stuck).
+        try:
+            sensor_values = self._robot.read_irs()  # Should be absolute values (no log or anything).
+        except:
+            sensor_values = [0, 0, 0, 0, 0, 0, 0, 0]
+
+        collision_far = any([0.13 <= i < 0.2 for i in sensor_values])
+        collision_close = any([0 < i < 0.13 for i in sensor_values])
+
+        if collision_close:
+            self.collision_counter += 1
+            return "close"
+        elif collision_far:
+            return "far"
+        else:
+            self.collision_counter = 0
+            return "nothing"
+
+    def best_action_for_state(self, state):
+        # Given a state (tuple format), what is the best action we take, i.e. for which action is the Q-value highest?
+        q_row = self.q_table[state]
+        max_val_indices = [i for i, j in enumerate(q_row) if j == max(q_row)]
+        best_action = random.choice(max_val_indices) if len(max_val_indices) > 1 else np.argmax(q_row)
+
+        return best_action
+
+    def physical_collision(self):
+        # This function checks for physical collision that is not based on the sensors, but on an object around the Robot
+        # in V-REP.
+        [_, collision_state] = vrep.simxReadCollision(self._robot._clientID, self.collision_handle, vrep.simx_opmode_streaming)
+
+        return collision_state
 

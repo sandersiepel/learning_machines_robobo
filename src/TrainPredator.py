@@ -13,6 +13,7 @@ from Statistics import Statistics
 from tqdm import tqdm, trange
 import socket
 import cv2
+import prey_controller as prey
 import pandas as pd
 from itertools import product
 
@@ -37,7 +38,7 @@ class Direction:
 class Environment:
     # All of our constants that together define a training set-up.
     MAX_ITERATIONS = 50  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 50  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_SIMULATION_ITERATIONS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
 
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .8
@@ -53,7 +54,9 @@ class Environment:
         self.rob = robobo.SimulationRobobo().connect(address=self.IP_ADDRESS, port=19997)
         self.rob.play_simulation()
         self.prey = robobo.SimulationRoboboPrey().connect(address=self.IP_ADDRESS, port=19989)
-        self.prey_controller = prey.Prey(robot=self.prey, level=2)
+
+        q_table_prey = self.initialize_q_table_prey()
+        self.prey_controller = prey.Prey(robot=self.prey, q_table=q_table_prey, level=2)
         self.prey_controller.start()
 
         # Stuff for keeping track of stats/data
@@ -85,6 +88,7 @@ class Environment:
             self.stats.add_step_counter(i, self.iteration_counter)
             self.iteration_counter = 0
 
+            q_prey = self.prey_controller.q_table
             self.prey_controller.stop()
             self.prey_controller.join()
             self.prey.disconnect()
@@ -92,7 +96,7 @@ class Environment:
             self.rob.wait_for_ping()
             self.rob.play_simulation()
             self.prey = robobo.SimulationRoboboPrey().connect(address=self.IP_ADDRESS, port=19989)
-            self.prey_controller = prey.Prey(robot=self.prey, level=2)
+            self.prey_controller = prey.Prey(robot=self.prey, q_table=q_prey, level=2)
             self.prey_controller.start()
 
     def best_action_for_state(self, state):
@@ -126,6 +130,11 @@ class Environment:
         # E.g. the size (5, 5, 5, 5, 5) denotes each sensor, with its amount of possible states (see func handle_state).
         return np.random.uniform(low=6, high=6, size=([2, 2, 2, 2, 2, 2] + [len(self.action_space)]))
 
+    def initialize_q_table_prey(self):
+        # Initialize Q-table for states * action pairs with default values (0).
+        # E.g. the size (5, 5, 5, 5, 5) denotes each sensor, with its amount of possible states (see func handle_state).
+        return np.random.uniform(low=6, high=6, size=([3, 3, 3, 3, 3, 3, 3, 3] + [len(self.action_space)]))
+
     def handle_state(self):
         contours_left_far, contours_left_close, contours_center_far, contours_center_close, contours_right_far, contours_right_close = self.determine_food()
         res = tuple()
@@ -157,7 +166,7 @@ class Environment:
         else:
             res += (0,)
 
-        print(f'State: {res}')
+        # print(f'State: {res}')
         return res
 
     def determine_food(self):
@@ -224,7 +233,7 @@ class Environment:
         reward = 0
 
         if curr_state[1] > 0 or curr_state[3] > 0 or curr_state[5] > 0:
-            print('prey is in center, close')
+            # print('prey is in center, close')
             # Block is in center, close
             if curr_state[3] > 0:
                 if action == 2:  # If block is center, reward forward action
@@ -233,7 +242,7 @@ class Environment:
                     reward -= 5  # And punish other actions
 
             else:  # Block is either left close or right close
-                print('prey is left/right close')
+                # print('prey is left/right close')
                 if action == 0 and curr_state[1] > 0:  # We should do a small turn, so action 0 or 1
                     reward += 1
                 elif action == 1 and curr_state[5] > 0:
@@ -243,13 +252,13 @@ class Environment:
 
         elif curr_state[0] > 0 or curr_state[2] > 0 or curr_state[4] > 0:  # There are no close blocks, only far
             if curr_state[2] > 0:  # If center far is a block, move forward
-                print('prey is far center')
+                # print('prey is far center')
                 if action == 2:
                     reward += 1
                 else:
                     reward -= 5
             else:  # If left/right far is a block and not in center, turn slightly (action 0 or 1)
-                print('prey is far left/right')
+                # print('prey is far left/right')
                 if action == 0 and curr_state[0] > 1:
                     reward += 1
                 elif action == 1 and curr_state[4] > 0:
@@ -258,7 +267,7 @@ class Environment:
                     reward -= 5  # If we don't slightly turn, punish
 
         else:  # No block at all
-            print('no prey at all')
+            # print('no prey at all')
             if action == 3:  # We see nothing, so hard turn
                 reward += 1
             else:  # If we don't do a hard turn right, punish
