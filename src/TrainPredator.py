@@ -133,7 +133,7 @@ class Environment:
     def initialize_q_table_prey(self):
         # Initialize Q-table for states * action pairs with default values (0).
         # E.g. the size (5, 5, 5, 5, 5) denotes each sensor, with its amount of possible states (see func handle_state).
-        return np.random.uniform(low=6, high=6, size=([3, 3, 3, 3, 3, 3, 3, 3] + [len(self.action_space)]))
+        return np.random.uniform(low=6, high=6, size=([2, 2, 2, 2, 2, 2, 2, 2] + [len(self.action_space)]))
 
     def handle_state(self):
         contours_left_far, contours_left_close, contours_center_far, contours_center_close, contours_right_far, contours_right_close = self.determine_food()
@@ -272,7 +272,6 @@ class Environment:
                 reward += 1
             else:  # If we don't do a hard turn right, punish
                 reward -= 5
-
         return reward
 
     def update_q_table(self, best_action, curr_state):
