@@ -47,7 +47,7 @@ class Environment:
     IP_ADDRESS = socket.gethostbyname(socket.gethostname())  # Grabs local IP address (192.168.x.x) for your machine.
 
     action_space = [0, 1, 2, 3, 4]  # All of our available actions. Find definitions in the Direction class.
-    iteration_counter = 0
+    iteration_counter, physical_collision_counter = 0, 0
 
     def __init__(self):
         signal.signal(signal.SIGINT, self.terminate_program)
@@ -62,6 +62,9 @@ class Environment:
         # Stuff for keeping track of stats/data
         self.stats = Statistics(self.MAX_ITERATIONS, self.MAX_SIMULATION_ITERATIONS)
         self.q_table = self.initialize_q_table()
+
+        _, self.collision_handle = vrep.simxGetCollisionHandle(self.rob._clientID, 'Collision',
+                                                               vrep.simx_opmode_blocking)
 
     def start_environment(self):
         for i in trange(self.MAX_ITERATIONS):  # Nifty, innit?
@@ -87,6 +90,7 @@ class Environment:
 
             self.stats.add_step_counter(i, self.iteration_counter)
             self.iteration_counter = 0
+            self.physical_collision_counter = 0
 
             q_prey = self.prey_controller.q_table
             self.prey_controller.stop()
@@ -107,6 +111,12 @@ class Environment:
 
         return best_action
 
+    def physical_collision(self):
+        # This function checks for physical collision that is not based on the sensors, but on an object around the Robot
+        # in V-REP.
+        [_, collision_state] = vrep.simxReadCollision(self.rob._clientID, self.collision_handle, vrep.simx_opmode_streaming)
+        return collision_state
+
     def determine_action(self, curr_state):
         if random.random() < (1 - self.EPSILON):
             return random.choice(self.action_space)
@@ -120,10 +130,11 @@ class Environment:
         sys.exit(1)
 
     def valid_environment(self):
-        # This function checks whether the current simulation can continue or not, depending on (several) criteria.
+        # This function checks whether the current simulation can continue or not, depending on several criteria.
         c1 = self.iteration_counter >= self.MAX_SIMULATION_ITERATIONS
+        c2 = self.physical_collision_counter > 0
 
-        return False if any([c1]) else True
+        return False if any([c1, c2]) else True
 
     def initialize_q_table(self):
         # Initialize Q-table for states * action pairs with default values (0).
@@ -209,6 +220,11 @@ class Environment:
         # This function should accept an action (0, 1, 2...) and move the robot accordingly (left, right, forward).
         # It returns two things: new_state, which is the state (in tuple format) after this action has been performed.
         # and reward, which is the reward from this action.
+
+        collision2 = self.physical_collision()
+
+        if collision2:
+            self.physical_collision_counter += 1
 
         if action == 0:
             left, right, duration = Direction.LEFT
