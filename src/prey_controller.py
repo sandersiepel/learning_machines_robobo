@@ -95,8 +95,10 @@ class Prey(StoppableThread):
         for sensor_value in sensor_values:
             if sensor_value >= 0.8:  # No need for action, moving forward is best.
                 indices.append(0)
-            elif -0.9 <= sensor_value < 0.8:
+            elif 0.65 <= sensor_value < 0.8:
                 indices.append(1)
+            elif sensor_value < 0.65:  # We see an object, but not really close yet.
+                indices.append(2)
 
         # Return the values in tuple format, with which we can index our Q-table. This tuple is a representation
         # of the current state our robot is in (i.e. what does the robot see with its sensors).
@@ -155,40 +157,29 @@ class Prey(StoppableThread):
         # This function determines the reward an action should get, depending on whether or not rob is about to
         # collide with an object within the environment.
         reward = 0
-        # print("collision front: " + str(collision_front))
-        # print("collision back: " + str(collision_back))
 
-        if not collision_front:
-            if action == 2:
-                reward += 5
-        elif collision_front:
-            if action in [0, 1, 3, 4]:
+        if action in [0, 1]:  # Action is moving either left or right.
+            if collision_front == "nothing":
+                reward -= 1
+            elif collision_front == "far":
+                reward += 1
+            elif collision_front == "close":
+                reward -= 1
+        elif action in [3, 4]:
+            if collision_front == "nothing":
+                reward -= 1
+            elif collision_front == "far":
+                reward -= 1
+            elif collision_front == "close":
                 reward += 2
-        # if action == 2 and not collision_front:
-        #     reward += 5
-        # elif action in [0, 1]:
-        #     reward += 1
-        # elif action in [3, 4]:
-        #     reward += 1
+        elif action == 2:  # Action is moving forward.
+            if collision_front == "far":
+                reward -= 3
+            elif collision_front == "close":
+                reward -= 5
+            elif collision_front == "nothing":
+                reward += 3
 
-        # if collision_back and action in [0, 1, 3, 4]:
-        #     reward = 0
-        if collision_back:
-            reward = 0
-
-        # if action in [0, 1]:  # Action is moving either left or right.
-        #     if collision_front:
-        #         reward += 3
-        # elif action in [3, 4]:
-        #     if collision_front:
-        #         reward += 1
-        # elif action == 2:  # Action is moving forward.
-        #     if not collision_front:
-        #         reward += 5
-
-        # print("action: " + str(action))
-        # print("reward: " + str(reward) + "\n")
-        # print(reward)
         return reward
 
     def determine_action(self, curr_state):
@@ -199,21 +190,35 @@ class Prey(StoppableThread):
         # It also keeps track of the collision counter. If this counter exceeds its threshold (COLLISION_THRESHOLD)
         # then the environment should reset (to avoid rob getting stuck).
         try:
-            sensor_values = np.log(np.array(self._robot.read_irs())) / 10  #
+            sensor_values_front = self._robot.read_irs()[3:]   # Should be absolute values (no log or anything).
+            sensor_values_back = self._robot.read_irs()[:3]
         except:
-            sensor_values = [0, 0, 0, 0, 0, 0, 0, 0]
+            sensor_values_front = [0, 0, 0, 0, 0]
+            sensor_values_back = [0, 0, 0]
 
-        sensor_values = np.where(sensor_values == -np.inf, 0, sensor_values)  # Remove the infinite values.
-        sensor_values = (sensor_values - -0.65) / 0.65
-        # print(sensor_values)
+        collision_far_front = any([0.13 <= i < 0.2 for i in sensor_values_front])
+        collision_close_front = any([0 < i < 0.13 for i in sensor_values_front])
 
-        # print(str(sensor_values))
-        collision_front = any([-0.9 < i < 0.8 for i in sensor_values[3:]])
-        collision_back = any([-0.9 < i < 0.8 for i in sensor_values[:3]])
-        # collision_far = any([0.13 <= i < 0.2 for i in sensor_values])
-        # collision_close = any([0 < i < 0.13 for i in sensor_values])
+        collision_far_back = any([0.13 <= i < 0.2 for i in sensor_values_back])
+        collision_close_back = any([0 < i < 0.13 for i in sensor_values_back])
 
-        # print(collision_front, collision_back)
+        collision_front = ""
+        collision_back = ""
+
+        if collision_close_front:
+            collision_front = "close"
+        elif collision_far_front:
+            collision_front = "far"
+        else:
+            collision_front = "nothing"
+
+        if collision_close_back:
+            collision_back = "close"
+        elif collision_far_back:
+            collision_back = "far"
+        else:
+            collision_back = "nothing"
+
         return collision_front, collision_back
 
     def best_action_for_state(self, state):

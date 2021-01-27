@@ -154,7 +154,7 @@ class Environment:
     def initialize_q_table_prey(self):
         # Initialize Q-table for states * action pairs with default values (0).
         # E.g. the size (5, 5, 5, 5, 5) denotes each sensor, with its amount of possible states (see func handle_state).
-        return np.random.uniform(low=6, high=6, size=([2, 2, 2, 2, 2, 2, 2, 2] + [len(self.action_space)]))
+        return np.random.uniform(low=6, high=6, size=([3, 3, 3, 3, 3, 3, 3, 3] + [len(self.action_space)]))
 
     def handle_state(self):
         contours_left, contours_center, contours_right = self.determine_food()
@@ -181,50 +181,27 @@ class Environment:
     def determine_food(self):
         image = self.rob.get_image_front()
 
-        # Chop image vertically in two
-        # image_left_far = image[0:64, 0:30, :]
-        # image_left_close = image[64:128, 0:30, :]
-        #
-        # image_center_far = image[0:64, 30:98, :]
-        # image_center_close = image[64:128, 30:98, :]
-        #
-        # image_right_far = image[0:64, 98:128, :]
-        # image_right_close = image[64:128, 98:128, :]
+        maskl = np.zeros(image.shape, dtype=np.uint8)
+        maskr = np.zeros(image.shape, dtype=np.uint8)
+        maskc = np.full(image.shape, 255, dtype=np.uint8)
 
-        image_left = image[:, 0:30, :]
-        image_center = image[:, 30:98, :]
-        image_right = image[:, 98:128, :]
+        maskc = cv2.ellipse(maskc, (0, 128), (50, 90), 180, 0, 180, (0, 0, 0), -1)
+        maskc = cv2.ellipse(maskc, (128, 128), (50, 90), 180, 0, 180, (0, 0, 0), -1)
 
-        # Create mask for color green
-        # mask_left_far = cv2.inRange(image_left_far, (0, 0, 100), (140, 140, 255))
-        # mask_left_close = cv2.inRange(image_left_close, (0, 0, 100), (140, 140, 255))
-        #
-        # mask_center_far = cv2.inRange(image_center_far, (0, 0, 100), (140, 140, 255))
-        # mask_center_close = cv2.inRange(image_center_close, (0, 0, 100), (140, 140, 255))
-        #
-        # mask_right_far = cv2.inRange(image_right_far, (0, 0, 100), (140, 140, 255))
-        # mask_right_close = cv2.inRange(image_right_close, (0, 0, 100), (140, 140, 255))
+        maskl = cv2.ellipse(maskl, (0, 128), (50, 90), 180, 0, 180, (255, 255, 255), -1)
+        maskr = cv2.ellipse(maskr, (128, 128), (50, 90), 180, 0, 180, (255, 255, 255), -1)
 
-        mask_left = cv2.inRange(image_left, (0, 0, 100), (140, 140, 255))
-        mask_center = cv2.inRange(image_center, (0, 0, 100), (140, 140, 255))
-        mask_right = cv2.inRange(image_right, (0, 0, 100), (140, 140, 255))
+        resultc = cv2.bitwise_and(image, maskc)
+        resultl = cv2.bitwise_and(image, maskl)
+        resultr = cv2.bitwise_and(image, maskr)
 
-        # Find contours, if present
-        # contours_left_far, _ = cv2.findContours(mask_left_far, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        # contours_left_close, _ = cv2.findContours(mask_left_close, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        #
-        # contours_center_far, _ = cv2.findContours(mask_center_far, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        # contours_center_close, _ = cv2.findContours(mask_center_close, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        #
-        # contours_right_far, _ = cv2.findContours(mask_right_far, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        # contours_right_close, _ = cv2.findContours(mask_right_close, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        mask_left = cv2.inRange(resultl, (0, 0, 100), (140, 140, 255))
+        mask_center = cv2.inRange(resultc, (0, 0, 100), (140, 140, 255))
+        mask_right = cv2.inRange(resultr, (0, 0, 100), (140, 140, 255))
 
         contours_left, _ = cv2.findContours(mask_left, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         contours_center, _ = cv2.findContours(mask_center, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         contours_right, _ = cv2.findContours(mask_right, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-
-        # return len(contours_left_far), len(contours_left_close), len(contours_center_far), len(
-        #     contours_center_close), len(contours_right_far), len(contours_right_close)
 
         return len(contours_right), len(contours_center), len(contours_right)
 
@@ -264,50 +241,11 @@ class Environment:
         if curr_state[1] > 0 and action == 2:
             reward += 2
 
-        if curr_state[0] == 0 and curr_state[1] == 0 and curr_state[2] == 0:
-            if action == 4:
-                reward += 1
-
-        # if curr_state[1] > 0 or curr_state[3] > 0 or curr_state[5] > 0:
-        #     # print('prey is in center, close')
-        #     # Block is in center, close
-        #     if curr_state[3] > 0:
-        #         if action == 2:  # If block is center, reward forward action
-        #             reward += 1
-        #         else:
-        #             reward -= 5  # And punish other actions
-        #
-        #     else:  # Block is either left close or right close
-        #         # print('prey is left/right close')
-        #         if action == 0 and curr_state[1] > 0:  # We should do a small turn, so action 0 or 1
-        #             reward += 1
-        #         elif action == 1 and curr_state[5] > 0:
-        #             reward += 1
-        #         else:  # And if we don't, punish
-        #             reward -= 5
-        #
-        # elif curr_state[0] > 0 or curr_state[2] > 0 or curr_state[4] > 0:  # There are no close blocks, only far
-        #     if curr_state[2] > 0:  # If center far is a block, move forward
-        #         # print('prey is far center')
-        #         if action == 2:
-        #             reward += 1
-        #         else:
-        #             reward -= 5
-        #     else:  # If left/right far is a block and not in center, turn slightly (action 0 or 1)
-        #         # print('prey is far left/right')
-        #         if action == 0 and curr_state[0] > 1:
-        #             reward += 1
-        #         elif action == 1 and curr_state[4] > 0:
-        #             reward += 1
-        #         else:
-        #             reward -= 5  # If we don't slightly turn, punish
-        #
-        # else:  # No block at all
-        #     # print('no prey at all')
-        #     if action == 3:  # We see nothing, so hard turn
+        # if curr_state[0] == 0 and curr_state[1] == 0 and curr_state[2] == 0:
+        #     if action == 4:
         #         reward += 1
-        #     else:  # If we don't do a hard turn right, punish
-        #         reward -= 5
+
+
         return reward
 
     def update_q_table(self, best_action, curr_state):
