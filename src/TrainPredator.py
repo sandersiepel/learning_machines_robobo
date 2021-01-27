@@ -10,6 +10,7 @@ import pickle
 import random
 import os
 from Statistics import Statistics
+from Statistics_task3 import StatisticsTask3
 from tqdm import tqdm, trange
 import socket
 import cv2
@@ -60,7 +61,7 @@ class Environment:
         self.prey_controller.start()
 
         # Stuff for keeping track of stats/data
-        self.stats = Statistics(self.MAX_ITERATIONS, self.MAX_SIMULATION_ITERATIONS)
+        self.stats = StatisticsTask3(self.MAX_ITERATIONS, self.MAX_SIMULATION_ITERATIONS)
         self.q_table = self.initialize_q_table()
 
         _, self.collision_handle = vrep.simxGetCollisionHandle(self.rob._clientID, 'Collision',
@@ -74,6 +75,9 @@ class Environment:
 
             self.rob.set_phone_tilt(np.pi / 6, 100)
 
+            total_prey_reward = 0
+            total_predator_reward = 0
+
             # A simulation runs until valid_environment returns False.
             while self.valid_environment():
                 # Check in what state rob is, return tuple e.g. (0, 0, 0, 1, 0). A state is defined by rob's sensors.
@@ -83,12 +87,16 @@ class Environment:
                 best_action = self.determine_action(curr_state)
 
                 # Given our selected action (whether best or random), perform this action and update the Q-table.
-                reward = self.update_q_table(best_action, curr_state)
+                total_predator_reward += self.update_q_table(best_action, curr_state)
+                total_prey_reward += self.prey_controller.get_reward()
 
-                self.stats.add_reward(i, self.iteration_counter, reward)  # Add the reward for visualization purposes.
+                # self.stats.add_reward(i, self.iteration_counter, reward)  # Add the reward for visualization purposes.
                 self.iteration_counter += 1  # Keep track of how many actions this simulation does.
 
-            self.stats.add_step_counter(i, self.iteration_counter)
+            # self.stats.add_step_counter(i, self.iteration_counter)
+            if self.physical_collision_counter > 0:
+                self.stats.catched(i, self.iteration_counter)
+
             self.iteration_counter = 0
             self.physical_collision_counter = 0
 
@@ -102,6 +110,7 @@ class Environment:
             self.prey = robobo.SimulationRoboboPrey().connect(address=self.IP_ADDRESS, port=19989)
             self.prey_controller = prey.Prey(robot=self.prey, q_table=q_prey, level=2)
             self.prey_controller.start()
+        self.stats.save_data(EXPERIMENT_NAME)
 
     def best_action_for_state(self, state):
         # Given a state (tuple format), what is the best action we take, i.e. for which action is the Q-value highest?
@@ -332,17 +341,17 @@ def main():
             filename_q_table = f"results/{EXPERIMENT_NAME}/q_table_data_" + exp_name
             env.q_table = env.initialize_q_table()
             env.start_environment()
-            env.stats.save_rewards(filename_rewards)
+            # env.stats.save_rewards(filename_rewards)
             env.store_q_table(filename_q_table)
 
     else:
         env.start_environment()
 
         # Save all data (rewards, food collected, steps done per simulation, and the Q-table.
-        env.stats.save_rewards(
-            f"results/reward_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle")
-        env.store_q_table(
-            f"results/q_table_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle")
+        # env.stats.save_rewards(
+        #     f"results/reward_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle")
+        # env.store_q_table(
+        #     f"results/q_table_data_{env.MAX_ITERATIONS}_{env.MAX_SIMULATION_ITERATIONS}_{EXPERIMENT_NAME}.pickle")
 
 
 if __name__ == "__main__":

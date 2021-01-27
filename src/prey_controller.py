@@ -48,6 +48,7 @@ class Prey(StoppableThread):
         self._level = level
         _, self.collision_handle = vrep.simxGetCollisionHandle(self._robot._clientID, 'Hitbox0',
                                                                vrep.simx_opmode_blocking)
+        self.reward = 0
 
     def _sensor_better_reading(self, sensors_values):
         """
@@ -71,8 +72,7 @@ class Prey(StoppableThread):
             best_action = self.determine_action(curr_state)
 
             # Given our selected action (whether best or random), perform this action and update the Q-table.
-            reward = self.update_q_table(best_action, curr_state)
-
+            self.reward = self.update_q_table(best_action, curr_state)
 
             # self._robot.move(left=20.0, right=-10.0, millis=200)
             # sensors = self._sensor_better_reading(self._robot.read_irs())
@@ -101,6 +101,9 @@ class Prey(StoppableThread):
         # Return the values in tuple format, with which we can index our Q-table. This tuple is a representation
         # of the current state our robot is in (i.e. what does the robot see with its sensors).
         return tuple(indices)
+
+    def get_reward(self):
+        return self.reward
 
     def update_q_table(self, best_action, curr_state):
         # This function updates the Q-table accordingly to the current state of rob.
