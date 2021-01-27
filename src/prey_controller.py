@@ -157,18 +157,32 @@ class Prey(StoppableThread):
         reward = 0
         # print("collision front: " + str(collision_front))
         # print("collision back: " + str(collision_back))
-        if action in [0, 1]:  # Action is moving either left or right.
-            if collision_front:
-                reward += 3
+
+        if action == 2:
+            reward += 5
+        elif action in [0, 1]:
+            reward += 1
         elif action in [3, 4]:
-            if collision_front:
-                reward += 1
-        elif action == 2:  # Action is moving forward.
-            if not collision_front:
-                reward += 5
+            reward += 1
+
+        # if collision_back and action in [0, 1, 3, 4]:
+        #     reward = 0
+        if collision_front or collision_back:
+            reward = 0
+
+        # if action in [0, 1]:  # Action is moving either left or right.
+        #     if collision_front:
+        #         reward += 3
+        # elif action in [3, 4]:
+        #     if collision_front:
+        #         reward += 1
+        # elif action == 2:  # Action is moving forward.
+        #     if not collision_front:
+        #         reward += 5
 
         # print("action: " + str(action))
         # print("reward: " + str(reward) + "\n")
+        # print(reward)
         return reward
 
     def determine_action(self, curr_state):

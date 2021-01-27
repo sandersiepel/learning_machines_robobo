@@ -54,3 +54,15 @@ class StatisticsTask3():
         with open(f"results/cathed_{name}", 'rb') as fp:
             catch_score = pickle.load(fp)
         self.catch_score = catch_score
+
+    def plot_rewards(self):
+        plt.plot(self.reward_prey, label="prey")
+        plt.plot(self.reward_predator, label="predator")
+        # plt.xlabel(x_label)
+        # plt.title(title)
+        plt.legend()
+        plt.show()
+
+    def plot_data(self, data):
+        plt.plot(data)
+        plt.show()
