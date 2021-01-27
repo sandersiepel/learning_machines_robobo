@@ -158,16 +158,22 @@ class Prey(StoppableThread):
         # print("collision front: " + str(collision_front))
         # print("collision back: " + str(collision_back))
 
-        if action == 2:
-            reward += 5
-        elif action in [0, 1]:
-            reward += 1
-        elif action in [3, 4]:
-            reward += 1
+        if not collision_front:
+            if action == 2:
+                reward += 5
+        elif collision_front:
+            if action in [0, 1, 3, 4]:
+                reward += 2
+        # if action == 2 and not collision_front:
+        #     reward += 5
+        # elif action in [0, 1]:
+        #     reward += 1
+        # elif action in [3, 4]:
+        #     reward += 1
 
         # if collision_back and action in [0, 1, 3, 4]:
         #     reward = 0
-        if collision_front or collision_back:
+        if collision_back:
             reward = 0
 
         # if action in [0, 1]:  # Action is moving either left or right.
@@ -193,17 +199,21 @@ class Prey(StoppableThread):
         # It also keeps track of the collision counter. If this counter exceeds its threshold (COLLISION_THRESHOLD)
         # then the environment should reset (to avoid rob getting stuck).
         try:
-            sensor_values = self._robot.read_irs()  # Should be absolute values (no log or anything).
+            sensor_values = np.log(np.array(self._robot.read_irs())) / 10  #
         except:
             sensor_values = [0, 0, 0, 0, 0, 0, 0, 0]
 
+        sensor_values = np.where(sensor_values == -np.inf, 0, sensor_values)  # Remove the infinite values.
+        sensor_values = (sensor_values - -0.65) / 0.65
+        # print(sensor_values)
 
         # print(str(sensor_values))
-        collision_front = any([0 < i < 0.2 for i in sensor_values[3:]])
-        collision_back = any([0 < i < 0.2 for i in sensor_values[:3]])
+        collision_front = any([-0.9 < i < 0.8 for i in sensor_values[3:]])
+        collision_back = any([-0.9 < i < 0.8 for i in sensor_values[:3]])
         # collision_far = any([0.13 <= i < 0.2 for i in sensor_values])
         # collision_close = any([0 < i < 0.13 for i in sensor_values])
 
+        # print(collision_front, collision_back)
         return collision_front, collision_back
 
     def best_action_for_state(self, state):

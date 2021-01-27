@@ -18,7 +18,7 @@ class StatisticsTask3():
 
     def catched(self, simulation, iteration):
         self.catch_score[simulation] = 1
-        self.steps = iteration
+        self.steps[simulation] = iteration
 
     def add_rewards(self, simulation, reward_predator, reward_prey):
         self.reward_predator[simulation] = reward_predator

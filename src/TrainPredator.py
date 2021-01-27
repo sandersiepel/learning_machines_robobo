@@ -39,7 +39,7 @@ class Direction:
 class Environment:
     # All of our constants that together define a training set-up.
     MAX_ITERATIONS = 50  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 250  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_SIMULATION_ITERATIONS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
 
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .8
@@ -261,8 +261,12 @@ class Environment:
         if self.physical_collision_counter > 0:
             reward += 100
 
-        if curr_state[1] > 0:
+        if curr_state[1] > 0 and action == 2:
             reward += 2
+
+        if curr_state[0] == 0 and curr_state[1] == 0 and curr_state[2] == 0:
+            if action == 4:
+                reward += 1
 
         # if curr_state[1] > 0 or curr_state[3] > 0 or curr_state[5] > 0:
         #     # print('prey is in center, close')
