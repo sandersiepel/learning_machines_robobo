@@ -30,7 +30,7 @@ class StoppableThread(threading.Thread):
 
 class Prey(StoppableThread):
     LEARNING_RATE = .1
-    DISCOUNT_FACTOR = .9
+    DISCOUNT_FACTOR = .95
     EPSILON = 0.9  # Start epsilon value.
     action_space = [0, 1, 2, 3, 4]
     physical_collision_counter = 0
@@ -155,8 +155,8 @@ class Prey(StoppableThread):
         # This function determines the reward an action should get, depending on whether or not rob is about to
         # collide with an object within the environment.
         reward = 0
-        print("collision front: " + str(collision_front))
-        print("collision back: " + str(collision_back))
+        # print("collision front: " + str(collision_front))
+        # print("collision back: " + str(collision_back))
         if action in [0, 1]:  # Action is moving either left or right.
             if collision_front:
                 reward += 3
@@ -167,8 +167,8 @@ class Prey(StoppableThread):
             if not collision_front:
                 reward += 5
 
-        print("action: " + str(action))
-        print("reward: " + str(reward) + "\n")
+        # print("action: " + str(action))
+        # print("reward: " + str(reward) + "\n")
         return reward
 
     def determine_action(self, curr_state):
@@ -184,7 +184,7 @@ class Prey(StoppableThread):
             sensor_values = [0, 0, 0, 0, 0, 0, 0, 0]
 
 
-        print(str(sensor_values))
+        # print(str(sensor_values))
         collision_front = any([0 < i < 0.2 for i in sensor_values[3:]])
         collision_back = any([0 < i < 0.2 for i in sensor_values[:3]])
         # collision_far = any([0.13 <= i < 0.2 for i in sensor_values])
@@ -196,7 +196,7 @@ class Prey(StoppableThread):
         # Given a state (tuple format), what is the best action we take, i.e. for which action is the Q-value highest?
         q_row = self.q_table[state]
 
-        print(q_row)
+        # print(q_row)
         max_val_indices = [i for i, j in enumerate(q_row) if j == max(q_row)]
         best_action = random.choice(max_val_indices) if len(max_val_indices) > 1 else np.argmax(q_row)
 

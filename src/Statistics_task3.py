@@ -26,14 +26,31 @@ class StatisticsTask3():
 
     def save_data(self, name):
         # This function is used to save the accumulated rewards during training in a pickle file.
-        with open(f"reward_prey_{name}", 'wb') as fp:
+        with open(f"results/reward_prey_{name}", 'wb') as fp:
             pickle.dump(self.reward_prey, fp)
 
-        with open(f"reward_predator_{name}", 'wb') as fp:
+        with open(f"results/reward_predator_{name}", 'wb') as fp:
             pickle.dump(self.reward_predator, fp)
 
-        with open(f"steps_{name}", 'wb') as fp:
+        with open(f"results/steps_{name}", 'wb') as fp:
             pickle.dump(self.steps, fp)
 
-        with open(f"cathed_{name}", 'wb') as fp:
+        with open(f"results/cathed_{name}", 'wb') as fp:
             pickle.dump(self.catch_score, fp)
+
+    def read_data(self, name):
+        with open(f"results/reward_prey_{name}", 'rb') as fp:
+            reward_prey = pickle.load(fp)
+        self.reward_prey = reward_prey
+
+        with open(f"results/reward_predator_{name}", 'rb') as fp:
+            reward_predator = pickle.load(fp)
+        self.reward_predator = reward_predator
+
+        with open(f"results/steps_{name}", 'rb') as fp:
+            steps = pickle.load(fp)
+        self.steps = steps
+
+        with open(f"results/cathed_{name}", 'rb') as fp:
+            catch_score = pickle.load(fp)
+        self.catch_score = catch_score
