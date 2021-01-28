@@ -69,11 +69,11 @@ import numpy as np
 
 stats = StatisticsTask3(50, 250)
 stats.read_data("test")
-stats.plot_two_different_axis()
+# stats.plot_two_different_axis()
 # stats.plot_rewards()
 # stats.plot_data(stats.catch_score)
 # print(stats.steps)
-# stats.plot_data(stats.steps)
+stats.plot_data(stats.steps)
 
 
 

@@ -56,8 +56,8 @@ class StatisticsTask3():
         self.catch_score = catch_score
 
     def plot_rewards(self):
-        plt.plot(self.reward_prey, label="prey")
-        plt.plot(self.reward_predator, label="predator")
+        plt.plot(self.reward_prey / self.steps, label="prey")
+        plt.plot(self.reward_predator/ self.steps, label="predator")
         # plt.xlabel(x_label)
         # plt.title(title)
         plt.legend()

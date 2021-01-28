@@ -64,6 +64,7 @@ class Environment:
         # Stuff for keeping track of stats/data
         self.stats = StatisticsTask3(self.MAX_ITERATIONS, self.MAX_SIMULATION_ITERATIONS)
         self.q_table = self.initialize_q_table()
+        self.q_table_prey = self.initialize_q_table_prey()
 
         _, self.collision_handle = vrep.simxGetCollisionHandle(self.rob._clientID, 'Collision',
                                                                vrep.simx_opmode_blocking)
@@ -100,7 +101,7 @@ class Environment:
             self.iteration_counter = 0
             self.physical_collision_counter = 0
 
-            q_prey = self.prey_controller.q_table
+            self.q_table_prey = self.prey_controller.q_table
             self.prey_controller.stop()
             self.prey_controller.join()
             self.prey.disconnect()
@@ -111,6 +112,15 @@ class Environment:
             self.prey_controller = prey.Prey(robot=self.prey, q_table=q_prey, level=2)
             self.prey_controller.start()
         self.stats.save_data(EXPERIMENT_NAME)
+        self.save_q_tables()
+
+    def save_q_tables(self):
+        # This function is used to save the accumulated rewards during training in a pickle file.
+        with open(f"results/q_table_prey_{EXPERIMENT_NAME}", 'wb') as fp:
+            pickle.dump(self.q_table_prey, fp)
+
+        with open(f"results/q_table_predator_{EXPERIMENT_NAME}", 'wb') as fp:
+            pickle.dump(self.q_table, fp)
 
     def best_action_for_state(self, state):
         # Given a state (tuple format), what is the best action we take, i.e. for which action is the Q-value highest?
@@ -243,11 +253,11 @@ class Environment:
         if curr_state[1] > 0 and action == 2:
             reward += 5
 
-        if curr_state[0] == 0 and curr_state[1] == 0 and curr_state[2] == 0:  # We see nothing, turn
-            if action in [0, 1, 2, 3]:  # If we do anything except for a hard turn, punish
-                reward -= 2
-            elif action in [4]:  # We reward a hard turn if we see nothing
-                reward += 5
+        # if curr_state[0] == 0 and curr_state[1] == 0 and curr_state[2] == 0:  # We see nothing, turn
+        #     if action in [0, 1, 2, 3]:  # If we do anything except for a hard turn, punish
+        #         reward -= 2
+        #     elif action in [4]:  # We reward a hard turn if we see nothing
+        #         reward += 5
 
         return reward
 
@@ -268,7 +278,7 @@ class Environment:
                 reward + self.DISCOUNT_FACTOR * max_future_q)
 
         # And lastly, update the value in the Q-table.
-        if i >= 10:
+        if i >= 0:
             self.q_table[curr_state][best_action] = new_q
 
         # print(f"Q-table new: {self.q_table[curr_state]}")
