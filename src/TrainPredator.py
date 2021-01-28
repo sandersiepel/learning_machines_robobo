@@ -39,7 +39,7 @@ class Direction:
 class Environment:
     # All of our constants that together define a training set-up.
     MAX_ITERATIONS = 50  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 250  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_SIMULATION_ITERATIONS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
 
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .9
@@ -225,7 +225,7 @@ class Environment:
         else:
             left, right, duration = Direction.RRIGHT
 
-        if i < 10:
+        if i < 0:
             left, right, duration = 0, 0, 300
 
         self.rob.move(left, right, duration)
