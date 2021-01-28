@@ -2,12 +2,13 @@ import random
 import threading
 import numpy as np
 import vrep
+from numpy import inf
 
 
 class Direction:
     FORWARD = (25, 25, 300)  # Action: 2, forward
-    RRIGHT = (-15, 15, 300)  # Action: 3, strong right
-    LLEFT = (15, -15, 300)  # Action: 4, strong left
+    RRIGHT = (-20, 20, 900)  # Action: 3, strong right
+    LLEFT = (20, -20, 900)  # Action: 4, strong left
 
 
 class StoppableThread(threading.Thread):
@@ -29,12 +30,11 @@ class StoppableThread(threading.Thread):
 class Prey(StoppableThread):
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .9
-    EPSILON = 0.9  # Start epsilon value.
     action_space = [0, 1, 2]
     physical_collision_counter = 0
     collision_counter = 0
 
-    def __init__(self, robot, q_table=None, seed=42, log=None, level=2):
+    def __init__(self, robot, q_table=None, seed=42, log=None, level=2, epsilon=0.8):
         super(Prey, self).__init__()
         self.q_table = q_table
         self._log = log
@@ -44,6 +44,7 @@ class Prey(StoppableThread):
         _, self.collision_handle = vrep.simxGetCollisionHandle(self._robot._clientID, 'Hitbox0',
                                                                vrep.simx_opmode_blocking)
         self.reward = 0
+        self.epsilon = epsilon
 
     def _sensor_better_reading(self, sensors_values):
         """
@@ -72,12 +73,11 @@ class Prey(StoppableThread):
         # This function should return the values with which we can index our q_table, in tuple format.
         # So, it should take the last 5 sensor inputs (current state), transform each of them into a bucket where
         # the bucket size is already determined by the shape of the q_table.
-        try:
-            sensor_values = np.log(np.array(self._robot.read_irs())) / 10  #
-        except:
-            sensor_values = [0, 0, 0, 0, 0, 0, 0, 0]
-
-        sensor_values = np.where(sensor_values == -np.inf, 0, sensor_values)  # Remove the infinite values.
+        # [backR, backC, backL, frontRR, frontR, frontC, frontL, frontLL]
+        sensor_values = np.log(np.array(self._robot.read_irs())) / 10
+        sensors_keep = [3, 5, 7]  # Throw away back centor, front right and front left
+        sensor_values = np.array([sensor_values[i] for i in sensors_keep])
+        sensor_values[sensor_values == -inf] = 0  # Remove the infinite values.
         sensor_values = (sensor_values - -0.65) / 0.65  # Scales all variables between [0, 1] where 0 is close proximity.
 
         # Check what the actual sensor_values are (between [0, 1]) and determine their state
@@ -85,10 +85,8 @@ class Prey(StoppableThread):
         for sensor_value in sensor_values:
             if sensor_value >= 0.8:  # No need for action, moving forward is best.
                 indices.append(0)
-            elif 0.65 <= sensor_value < 0.8:
+            elif sensor_value < 0.8:
                 indices.append(1)
-            elif sensor_value < 0.65:  # We see an object, but not really close yet.
-                indices.append(2)
 
         # Return the values in tuple format, with which we can index our Q-table. This tuple is a representation
         # of the current state our robot is in (i.e. what does the robot see with its sensors).
@@ -101,6 +99,7 @@ class Prey(StoppableThread):
         # This function updates the Q-table accordingly to the current state of rob.
         # First, we determine the new state we end in if we would play our current best action, given our current state.
         new_state, reward = self.handle_action(best_action)
+        # print(f"PREY: \nstate: {curr_state}, best action: {best_action}, q-row: {self.q_table[curr_state]}")
 
         # Then we calculate the reward we would get in this new state.
         # max_future_q = np.amax(self.q_table[new_state])
@@ -113,10 +112,10 @@ class Prey(StoppableThread):
         # new_q = (1 - self.LEARNING_RATE) * current_q + self.LEARNING_RATE * (reward + self.DISCOUNT_FACTOR * max_future_q)
         new_q = current_q + self.LEARNING_RATE * (reward + self.DISCOUNT_FACTOR * future_action_q - current_q)
 
-        # print(f"old q: {self.q_table[curr_state]}")
         # And lastly, update the value in the Q-table.
         self.q_table[curr_state][best_action] = new_q
-        # print(f"new q: {self.q_table[curr_state]}")
+
+        # print(f"Curr Q: {current_q} changes to {new_q}, new q-row: {self.q_table[curr_state]}\n")
 
         return reward
 
@@ -124,13 +123,13 @@ class Prey(StoppableThread):
         # This function should accept an action (0, 1, 2...) and move the robot accordingly (left, right, forward).
         # It returns two things: new_state, which is the state (in tuple format) after this action has been performed.
         # and reward, which is the reward from this action.
-        collision_front, collision_back = self.collision()  # Do we collide, returns either "nothing", "far" or "close"
+        collision = self.collision()  # Do we collide, returns either "nothing", "far" or "close"
         collision2 = self.physical_collision()
 
         if collision2:
             self.physical_collision_counter += 1
 
-        reward = self.determine_reward(collision_front, collision_back, action)
+        reward = self.determine_reward(collision, action)
 
         if action == 0:
             left, right, duration = Direction.FORWARD  # Extreme right, action 3
@@ -143,61 +142,38 @@ class Prey(StoppableThread):
         return self.handle_state(), reward  # New_state, reward
 
     @staticmethod
-    def determine_reward(collision_front, collision_back, action):
+    def determine_reward(collision, action):
         # This function determines the reward an action should get, depending on whether or not rob is about to
         # collide with an object within the environment.
         reward = 0
 
-        if action in [1, 2]:  # Action is moving either left or right.
-            if collision_front == "nothing":
-                reward -= 1
-            elif collision_front == "far" or collision_front == "close":
-                reward += 5
-        elif action == 0:  # Action is moving forward.
-            if collision_front == "far":
-                reward -= 1
-            elif collision_front == "close":
-                reward -= 2
-            elif collision_front == "nothing":
-                reward += 5
+        if collision and action in [1, 2]:  # If we collide in front and we do left/right
+            reward += 3
+
+        if not collision and action == 0:  # If we don't collide and we go forward
+            reward += 10
 
         return reward
 
     def determine_action(self, curr_state):
-        return random.choice(self.action_space) if random.random() < (1 - self.EPSILON) else self.best_action_for_state(curr_state)
+        if random.random() < (1 - self.epsilon):
+            return random.choice(self.action_space)
+        else:
+            return self.best_action_for_state(curr_state)
 
     def collision(self):
-        # This function checks whether rob is close to something or not. It returns the "distance", either "close", "far" or "nothing".
-        # It also keeps track of the collision counter. If this counter exceeds its threshold (COLLISION_THRESHOLD)
-        # then the environment should reset (to avoid rob getting stuck).
-        try:
-            sensor_values_front = self._robot.read_irs()[3:]   # Should be absolute values (no log or anything).
-            sensor_values_back = self._robot.read_irs()[:3]
-        except:
-            sensor_values_front = [0, 0, 0, 0, 0]
-            sensor_values_back = [0, 0, 0]
+        # [backR, backC, backL, frontRR, frontR, frontC, frontL, frontLL]
+        sensor_values = np.log(np.array(self._robot.read_irs())) / 10
+        sensors_keep = [3, 5, 7]  # Throw away back center, front right and front left, keep: backR, backL, frontRR, frontC, frontLL
+        sensor_values = np.array([sensor_values[i] for i in sensors_keep])
 
-        collision_far_front = any([0.13 <= i < 0.2 for i in sensor_values_front])
-        collision_close_front = any([0 < i < 0.13 for i in sensor_values_front])
+        sensor_values[sensor_values == -inf] = 0  # Remove the infinite values.
+        sensor_values = (sensor_values - -0.65) / 0.65  # Scales all variables between [0, 1] where 0 is close proximity.
 
-        collision_far_back = any([0.13 <= i < 0.2 for i in sensor_values_back])
-        collision_close_back = any([0 < i < 0.13 for i in sensor_values_back])
+        collision = any([-0.9 < i < 0.8 for i in sensor_values])
 
-        if collision_close_front:
-            collision_front = "close"
-        elif collision_far_front:
-            collision_front = "far"
-        else:
-            collision_front = "nothing"
-
-        if collision_close_back:
-            collision_back = "close"
-        elif collision_far_back:
-            collision_back = "far"
-        else:
-            collision_back = "nothing"
-
-        return collision_front, collision_back
+        # print("Collisions", collision_front, collision_back)
+        return collision
 
     def best_action_for_state(self, state):
         # Given a state (tuple format), what is the best action we take, i.e. for which action is the Q-value highest?
