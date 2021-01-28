@@ -38,7 +38,7 @@ class Direction:
 # noinspection PyProtectedMember
 class Environment:
     # All of our constants that together define a training set-up.
-    MAX_ITERATIONS = 50  # Amount of simulations until termination.
+    MAX_ITERATIONS = 70  # Amount of simulations until termination.
     MAX_SIMULATION_ITERATIONS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
 
     LEARNING_RATE = .1
@@ -57,6 +57,8 @@ class Environment:
         self.rob.play_simulation()
         self.prey = robobo.SimulationRoboboPrey().connect(address=self.IP_ADDRESS, port=19989)
 
+        q_table_prey = self.initialize_q_table_prey()
+        self.prey_controller = prey.Prey(robot=self.prey, q_table=q_table_prey, level=2, epsilon=self.EPSILON)
         self.q_table_prey = self.initialize_q_table_prey()
         self.prey_controller = prey.Prey(robot=self.prey, q_table=self.q_table_prey, level=2)
         self.prey_controller.start()
@@ -69,6 +71,9 @@ class Environment:
                                                                vrep.simx_opmode_blocking)
 
     def start_environment(self):
+        # Initialize robot and spawn point handles for randomized position prey
+        robot, handles = self.initialize_handles()
+
         for i in trange(self.MAX_ITERATIONS):  # Nifty, innit?
             self.rob.set_phone_tilt(np.pi / 6, 100)
 
@@ -81,7 +86,7 @@ class Environment:
                 curr_state = self.handle_state()
 
                 # Do we perform random action (due to epsilon < 1) or our best possible action?
-                best_action = self.determine_action(curr_state)
+                best_action = self.determine_action(i, curr_state)
 
                 # Given our selected action (whether best or random), perform this action and update the Q-table.
                 total_predator_reward += self.update_q_table(i, best_action, curr_state)
@@ -106,8 +111,14 @@ class Environment:
             self.prey.disconnect()
             self.rob.stop_world()
             self.rob.wait_for_ping()
+
+            # Find a random position for the prey
+            start_pos, robot = self.determine_start_position(handles, robot)
+            vrep.simxSetObjectPosition(self.rob._clientID, robot, -1, start_pos, vrep.simx_opmode_oneshot)
+
             self.rob.play_simulation()
             self.prey = robobo.SimulationRoboboPrey().connect(address=self.IP_ADDRESS, port=19989)
+            self.prey_controller = prey.Prey(robot=self.prey, q_table=q_prey, level=2, epsilon=self.EPSILON)
             self.prey_controller = prey.Prey(robot=self.prey, q_table=self.q_table_prey, level=2)
             self.prey_controller.start()
         self.stats.save_data(EXPERIMENT_NAME)
@@ -120,6 +131,22 @@ class Environment:
 
         with open(f"results/q_table_predator_{EXPERIMENT_NAME}", 'wb') as fp:
             pickle.dump(self.q_table, fp)
+
+    def initialize_handles(self):
+        # This function initializes the starting handles. These are used for initializing different start positions.
+        _, robot = vrep.simxGetObjectHandle(self.rob._clientID, 'Robobo#0', vrep.simx_opmode_blocking)
+        _, handle0 = vrep.simxGetObjectHandle(self.rob._clientID, 'Start#0', vrep.simx_opmode_blocking)
+        _, handle1 = vrep.simxGetObjectHandle(self.rob._clientID, 'Start#1', vrep.simx_opmode_blocking)
+        _, handle2 = vrep.simxGetObjectHandle(self.rob._clientID, 'Start#2', vrep.simx_opmode_blocking)
+        _, handle3 = vrep.simxGetObjectHandle(self.rob._clientID, 'Start#3', vrep.simx_opmode_blocking)
+
+        return robot, [handle0, handle1, handle2, handle3]
+
+    def determine_start_position(self, handles, robot):
+        # Given a handle for a start position, and a robot handle: determine a new start location randomly.
+        random_handle = random.choice(handles)
+        error, start_pos = vrep.simxGetObjectPosition(self.prey._clientID, random_handle, -1, vrep.simx_opmode_blocking)
+        return [start_pos[0], start_pos[1], 0.04], robot
 
     def best_action_for_state(self, state):
         # Given a state (tuple format), what is the best action we take, i.e. for which action is the Q-value highest?
@@ -135,8 +162,8 @@ class Environment:
         [_, collision_state] = vrep.simxReadCollision(self.rob._clientID, self.collision_handle, vrep.simx_opmode_streaming)
         return collision_state
 
-    def determine_action(self, curr_state):
-        if random.random() < (1 - self.EPSILON):
+    def determine_action(self, i, curr_state):
+        if random.random() < (1 - self.EPSILON) and i < (self.MAX_ITERATIONS - 20):
             return random.choice(self.action_space)
         else:
             return self.best_action_for_state(curr_state)
@@ -162,7 +189,7 @@ class Environment:
     def initialize_q_table_prey(self):
         # Initialize Q-table for states * action pairs with default values (0).
         # E.g. the size (5, 5, 5, 5, 5) denotes each sensor, with its amount of possible states (see func handle_state).
-        return np.random.uniform(low=6, high=6, size=([3, 3, 3, 3, 3, 3, 3, 3] + [len(self.action_space_prey)]))
+        return np.random.uniform(low=6, high=6, size=([2, 2, 2] + [len(self.action_space_prey)]))
 
     def handle_state(self):
         contours_left, contours_center, contours_right = self.determine_food()
@@ -234,7 +261,7 @@ class Environment:
         else:
             left, right, duration = Direction.RRIGHT
 
-        if i < 0:
+        if i < 5:
             left, right, duration = 0, 0, 300
 
         self.rob.move(left, right, duration)
@@ -246,23 +273,25 @@ class Environment:
         # This function determines the reward an action should get
         # Actions: left, right, forward, rright, lleft
         reward = 0
+
         if self.physical_collision_counter > 0:
             reward += 100
 
-        if curr_state[1] > 0 and action == 2:
-            reward += 5
+        if curr_state[1] > 0 and action == 2:  # If prey is in center vision, go forward
+            reward += 10
 
-        # if curr_state[0] == 0 and curr_state[1] == 0 and curr_state[2] == 0:  # We see nothing, turn
-        #     if action in [0, 1, 2, 3]:  # If we do anything except for a hard turn, punish
-        #         reward -= 2
-        #     elif action in [4]:  # We reward a hard turn if we see nothing
-        #         reward += 5
+        if curr_state[0] == 0 and curr_state[1] == 0 and curr_state[2] == 0:  # We see nothing, turn
+            if action in [0, 1, 2, 3]:  # If we do anything except for a hard turn, punish
+                reward -= 2
+            elif action in [4]:  # We reward a hard turn if we see nothing
+                reward += 5
 
         return reward
 
     def update_q_table(self, i, best_action, curr_state):
         # This function updates the Q-table accordingly to the current state of rob.
         # First, we determine the new state we end in if we would play our current best action, given our current state.
+        # print(f"PREDATOR: \nstate: {curr_state}, best action: {best_action}, q-row: {self.q_table[curr_state]}")
         new_state, reward = self.handle_action(i, best_action, curr_state)
         # print(f"Q-table old: {self.q_table[curr_state]}")
 
@@ -277,10 +306,11 @@ class Environment:
                 reward + self.DISCOUNT_FACTOR * max_future_q)
 
         # And lastly, update the value in the Q-table.
-        if i >= 0:
+        if i >= 5:
             self.q_table[curr_state][best_action] = new_q
 
         # print(f"Q-table new: {self.q_table[curr_state]}")
+        # print(f"Curr Q: {current_q} changes to {new_q}, new q-row: {self.q_table[curr_state]}\n")
 
         return reward
 
