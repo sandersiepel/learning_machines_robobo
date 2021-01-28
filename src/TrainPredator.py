@@ -57,14 +57,13 @@ class Environment:
         self.rob.play_simulation()
         self.prey = robobo.SimulationRoboboPrey().connect(address=self.IP_ADDRESS, port=19989)
 
-        q_table_prey = self.initialize_q_table_prey()
-        self.prey_controller = prey.Prey(robot=self.prey, q_table=q_table_prey, level=2)
+        self.q_table_prey = self.initialize_q_table_prey()
+        self.prey_controller = prey.Prey(robot=self.prey, q_table=self.q_table_prey, level=2)
         self.prey_controller.start()
 
         # Stuff for keeping track of stats/data
         self.stats = StatisticsTask3(self.MAX_ITERATIONS, self.MAX_SIMULATION_ITERATIONS)
         self.q_table = self.initialize_q_table()
-        self.q_table_prey = self.initialize_q_table_prey()
 
         _, self.collision_handle = vrep.simxGetCollisionHandle(self.rob._clientID, 'Collision',
                                                                vrep.simx_opmode_blocking)
@@ -109,7 +108,7 @@ class Environment:
             self.rob.wait_for_ping()
             self.rob.play_simulation()
             self.prey = robobo.SimulationRoboboPrey().connect(address=self.IP_ADDRESS, port=19989)
-            self.prey_controller = prey.Prey(robot=self.prey, q_table=q_prey, level=2)
+            self.prey_controller = prey.Prey(robot=self.prey, q_table=self.q_table_prey, level=2)
             self.prey_controller.start()
         self.stats.save_data(EXPERIMENT_NAME)
         self.save_q_tables()

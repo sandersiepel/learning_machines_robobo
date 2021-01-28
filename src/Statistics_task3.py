@@ -58,8 +58,9 @@ class StatisticsTask3():
     def plot_rewards(self):
         plt.plot(self.reward_prey / self.steps, label="prey")
         plt.plot(self.reward_predator/ self.steps, label="predator")
-        # plt.xlabel(x_label)
-        # plt.title(title)
+        plt.xlabel("Reward")
+        plt.ylabel("Simulation")
+        plt.title("Average reward per step")
         plt.legend()
         plt.show()
 
