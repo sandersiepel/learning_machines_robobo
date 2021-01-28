@@ -30,11 +30,12 @@ class StoppableThread(threading.Thread):
 class Prey(StoppableThread):
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .9
+    EPSILON = 0.9  # Start epsilon value.
     action_space = [0, 1, 2]
     physical_collision_counter = 0
     collision_counter = 0
 
-    def __init__(self, robot, q_table=None, seed=42, log=None, level=2, epsilon=0.8):
+    def __init__(self, robot, q_table=None, seed=42, log=None, level=2, train=True, epsilon=0.9):
         super(Prey, self).__init__()
         self.q_table = q_table
         self._log = log
@@ -44,7 +45,11 @@ class Prey(StoppableThread):
         _, self.collision_handle = vrep.simxGetCollisionHandle(self._robot._clientID, 'Hitbox0',
                                                                vrep.simx_opmode_blocking)
         self.reward = 0
-        self.epsilon = epsilon
+        self.train = train
+        if not self.train:
+            self.EPSILON = 1
+        else:
+            self.epsilon = epsilon
 
     def _sensor_better_reading(self, sensors_values):
         """
@@ -101,19 +106,21 @@ class Prey(StoppableThread):
         new_state, reward = self.handle_action(best_action)
         # print(f"PREY: \nstate: {curr_state}, best action: {best_action}, q-row: {self.q_table[curr_state]}")
 
-        # Then we calculate the reward we would get in this new state.
-        # max_future_q = np.amax(self.q_table[new_state])
-        future_action_q = self.q_table[new_state][self.determine_action(new_state)]
+        if self.train:
+            # Then we calculate the reward we would get in this new state.
+            # max_future_q = np.amax(self.q_table[new_state])
+            future_action_q = self.q_table[new_state][self.determine_action(new_state)]
 
-        # Check what Q-value our current action has.
-        current_q = self.q_table[curr_state][best_action]
+            # Check what Q-value our current action has.
+            current_q = self.q_table[curr_state][best_action]
 
-        # Calculate the new Q-value with the common formula
-        # new_q = (1 - self.LEARNING_RATE) * current_q + self.LEARNING_RATE * (reward + self.DISCOUNT_FACTOR * max_future_q)
-        new_q = current_q + self.LEARNING_RATE * (reward + self.DISCOUNT_FACTOR * future_action_q - current_q)
-
-        # And lastly, update the value in the Q-table.
-        self.q_table[curr_state][best_action] = new_q
+            # Calculate the new Q-value with the common formula
+            # new_q = (1 - self.LEARNING_RATE) * current_q + self.LEARNING_RATE * (reward + self.DISCOUNT_FACTOR * max_future_q)
+            new_q = current_q + self.LEARNING_RATE * (reward + self.DISCOUNT_FACTOR * future_action_q - current_q)
+            # print(f"old q: {self.q_table[curr_state]}")
+            # And lastly, update the value in the Q-table.
+            self.q_table[curr_state][best_action] = new_q
+            # print(f"new q: {self.q_table[curr_state]}")
 
         # print(f"Curr Q: {current_q} changes to {new_q}, new q-row: {self.q_table[curr_state]}\n")
 
