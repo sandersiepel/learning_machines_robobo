@@ -57,10 +57,9 @@ class Environment:
         self.rob.play_simulation()
         self.prey = robobo.SimulationRoboboPrey().connect(address=self.IP_ADDRESS, port=19989)
 
-        q_table_prey = self.initialize_q_table_prey()
-        self.prey_controller = prey.Prey(robot=self.prey, q_table=q_table_prey, level=2, epsilon=self.EPSILON)
         self.q_table_prey = self.initialize_q_table_prey()
-        self.prey_controller = prey.Prey(robot=self.prey, q_table=self.q_table_prey, level=2)
+        self.prey_controller = prey.Prey(robot=self.prey, q_table=self.q_table_prey, level=2, epsilon=self.EPSILON)
+
         self.prey_controller.start()
 
         # Stuff for keeping track of stats/data
@@ -118,8 +117,7 @@ class Environment:
 
             self.rob.play_simulation()
             self.prey = robobo.SimulationRoboboPrey().connect(address=self.IP_ADDRESS, port=19989)
-            self.prey_controller = prey.Prey(robot=self.prey, q_table=q_prey, level=2, epsilon=self.EPSILON)
-            self.prey_controller = prey.Prey(robot=self.prey, q_table=self.q_table_prey, level=2)
+            self.prey_controller = prey.Prey(robot=self.prey, q_table=self.q_table_prey, level=2, epsilon=self.EPSILON)
             self.prey_controller.start()
         self.stats.save_data(EXPERIMENT_NAME)
         self.save_q_tables()
