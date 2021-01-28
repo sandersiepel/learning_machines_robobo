@@ -59,6 +59,8 @@ class Environment:
 
         q_table_prey = self.initialize_q_table_prey()
         self.prey_controller = prey.Prey(robot=self.prey, q_table=q_table_prey, level=2, epsilon=self.EPSILON)
+        self.q_table_prey = self.initialize_q_table_prey()
+        self.prey_controller = prey.Prey(robot=self.prey, q_table=self.q_table_prey, level=2)
         self.prey_controller.start()
 
         # Stuff for keeping track of stats/data
@@ -99,10 +101,11 @@ class Environment:
                 self.stats.catched(i, self.iteration_counter)
 
             self.stats.add_rewards(i, total_predator_reward, total_prey_reward)
+
             self.iteration_counter = 0
             self.physical_collision_counter = 0
 
-            q_prey = self.prey_controller.q_table
+            self.q_table_prey = self.prey_controller.q_table
             self.prey_controller.stop()
             self.prey_controller.join()
             self.prey.disconnect()
@@ -116,8 +119,18 @@ class Environment:
             self.rob.play_simulation()
             self.prey = robobo.SimulationRoboboPrey().connect(address=self.IP_ADDRESS, port=19989)
             self.prey_controller = prey.Prey(robot=self.prey, q_table=q_prey, level=2, epsilon=self.EPSILON)
+            self.prey_controller = prey.Prey(robot=self.prey, q_table=self.q_table_prey, level=2)
             self.prey_controller.start()
         self.stats.save_data(EXPERIMENT_NAME)
+        self.save_q_tables()
+
+    def save_q_tables(self):
+        # This function is used to save the accumulated rewards during training in a pickle file.
+        with open(f"results/q_table_prey_{EXPERIMENT_NAME}", 'wb') as fp:
+            pickle.dump(self.q_table_prey, fp)
+
+        with open(f"results/q_table_predator_{EXPERIMENT_NAME}", 'wb') as fp:
+            pickle.dump(self.q_table, fp)
 
     def initialize_handles(self):
         # This function initializes the starting handles. These are used for initializing different start positions.
@@ -268,10 +281,10 @@ class Environment:
             reward += 10
 
         if curr_state[0] == 0 and curr_state[1] == 0 and curr_state[2] == 0:  # We see nothing, turn
-            if action == 4:  # We reward a hard LEFT turn if we see nothing
-                reward += 2
-            else:
+            if action in [0, 1, 2, 3]:  # If we do anything except for a hard turn, punish
                 reward -= 2
+            elif action in [4]:  # We reward a hard turn if we see nothing
+                reward += 5
 
         return reward
 
