@@ -255,6 +255,7 @@ class Environment:
         # This function updates the Q-table accordingly to the current state of rob.
         # First, we determine the new state we end in if we would play our current best action, given our current state.
         new_state, reward = self.handle_action(i, best_action, curr_state)
+        print(f"Q-table old: {self.q_table[curr_state]}")
 
         # Then we calculate the reward we would get in this new state.
         max_future_q = np.amax(self.q_table[new_state])
@@ -267,7 +268,10 @@ class Environment:
                 reward + self.DISCOUNT_FACTOR * max_future_q)
 
         # And lastly, update the value in the Q-table.
-        self.q_table[curr_state][best_action] = new_q
+        if i >= 10:
+            self.q_table[curr_state][best_action] = new_q
+
+        print(f"Q-table new: {self.q_table[curr_state]}")
 
         return reward
 
