@@ -5,8 +5,6 @@ import vrep
 
 
 class Direction:
-    LEFT = (-5, 5, 300)  # Action: 0, left
-    RIGHT = (5, -5, 300)  # Action: 1, right
     FORWARD = (25, 25, 300)  # Action: 2, forward
     RRIGHT = (-15, 15, 300)  # Action: 3, strong right
     LLEFT = (15, -15, 300)  # Action: 4, strong left
@@ -30,21 +28,18 @@ class StoppableThread(threading.Thread):
 
 class Prey(StoppableThread):
     LEARNING_RATE = .1
-    DISCOUNT_FACTOR = .95
+    DISCOUNT_FACTOR = .9
     EPSILON = 0.9  # Start epsilon value.
-    action_space = [0, 1, 2, 3, 4]
+    action_space = [0, 1, 2]
     physical_collision_counter = 0
     collision_counter = 0
-
 
     def __init__(self, robot, q_table=None, seed=42, log=None, level=2):
         super(Prey, self).__init__()
         self.q_table = q_table
         self._log = log
         self._robot = robot
-        # seed for the random function -> make reproducible the experiment
         self._seed = seed
-        # default level is 2 -> medium
         self._level = level
         _, self.collision_handle = vrep.simxGetCollisionHandle(self._robot._clientID, 'Hitbox0',
                                                                vrep.simx_opmode_blocking)
@@ -63,7 +58,6 @@ class Prey(StoppableThread):
         return [0 if value is False else (((value - old_min) * (new_max - new_min)) / (old_max - old_min)) + new_min for value in sensors_values]
 
     def run(self):
-        # TODO: read q-table
         while not self.stopped():
             # print(self.q_table.shape)
             curr_state = self.handle_state()
@@ -73,10 +67,6 @@ class Prey(StoppableThread):
 
             # Given our selected action (whether best or random), perform this action and update the Q-table.
             self.reward = self.update_q_table(best_action, curr_state)
-
-            # self._robot.move(left=20.0, right=-10.0, millis=200)
-            # sensors = self._sensor_better_reading(self._robot.read_irs())
-            # print('moved, sensors: ', sensors)
 
     def handle_state(self):
         # This function should return the values with which we can index our q_table, in tuple format.
@@ -139,18 +129,14 @@ class Prey(StoppableThread):
         reward = self.determine_reward(collision_front, collision_back, action)
 
         if action == 0:
-            left, right, duration = Direction.LEFT  # Left, action 0
+            left, right, duration = Direction.FORWARD  # Extreme right, action 3
         elif action == 1:
-            left, right, duration = Direction.RIGHT  # Right, action 1
-        elif action == 3:
-            left, right, duration = Direction.RRIGHT  # Extreme right, action 3
-        elif action == 4:
-            left, right, duration = Direction.LLEFT  # Extreme left, action 4
+            left, right, duration = Direction.RRIGHT  # Extreme left, action 4
         else:
-            left, right, duration = Direction.FORWARD  # Forward, action 2
+            left, right, duration = Direction.LLEFT  # Forward, action 2
 
         self._robot.move(left, right, duration)
-        return self.handle_state(), reward # New_state, reward
+        return self.handle_state(), reward  # New_state, reward
 
     @staticmethod
     def determine_reward(collision_front, collision_back, action):
@@ -158,27 +144,18 @@ class Prey(StoppableThread):
         # collide with an object within the environment.
         reward = 0
 
-        if action in [0, 1]:  # Action is moving either left or right.
+        if action in [1, 2]:  # Action is moving either left or right.
             if collision_front == "nothing":
                 reward -= 1
-            elif collision_front == "far":
-                reward += 1
-            elif collision_front == "close":
-                reward -= 1
-        elif action in [3, 4]:
-            if collision_front == "nothing":
-                reward -= 1
-            elif collision_front == "far":
-                reward -= 1
-            elif collision_front == "close":
-                reward += 2
-        elif action == 2:  # Action is moving forward.
+            elif collision_front == "far" or collision_front == "close":
+                reward += 5
+        elif action == 0:  # Action is moving forward.
             if collision_front == "far":
-                reward -= 3
+                reward -= 1
             elif collision_front == "close":
-                reward -= 5
+                reward -= 2
             elif collision_front == "nothing":
-                reward += 3
+                reward += 5
 
         return reward
 
@@ -202,9 +179,6 @@ class Prey(StoppableThread):
         collision_far_back = any([0.13 <= i < 0.2 for i in sensor_values_back])
         collision_close_back = any([0 < i < 0.13 for i in sensor_values_back])
 
-        collision_front = ""
-        collision_back = ""
-
         if collision_close_front:
             collision_front = "close"
         elif collision_far_front:
@@ -225,7 +199,6 @@ class Prey(StoppableThread):
         # Given a state (tuple format), what is the best action we take, i.e. for which action is the Q-value highest?
         q_row = self.q_table[state]
 
-        # print(q_row)
         max_val_indices = [i for i, j in enumerate(q_row) if j == max(q_row)]
         best_action = random.choice(max_val_indices) if len(max_val_indices) > 1 else np.argmax(q_row)
 

@@ -39,15 +39,16 @@ class Direction:
 class Environment:
     # All of our constants that together define a training set-up.
     MAX_ITERATIONS = 50  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_SIMULATION_ITERATIONS = 250  # Amount of actions within one simulation. Actions = Q-table updates.
 
     LEARNING_RATE = .1
-    DISCOUNT_FACTOR = .8
+    DISCOUNT_FACTOR = .9
     EPSILON = 0.9  # Start epsilon value.
 
     IP_ADDRESS = socket.gethostbyname(socket.gethostname())  # Grabs local IP address (192.168.x.x) for your machine.
 
     action_space = [0, 1, 2, 3, 4]  # All of our available actions. Find definitions in the Direction class.
+    action_space_prey = [0, 1, 2]
     iteration_counter, physical_collision_counter = 0, 0
 
     def __init__(self):
@@ -69,10 +70,6 @@ class Environment:
 
     def start_environment(self):
         for i in trange(self.MAX_ITERATIONS):  # Nifty, innit?
-            # print(
-            #     f"Starting simulation nr. {i + 1}/{self.MAX_ITERATIONS}.. "
-            #     f"Q-table size: {self.q_table.size}, shape: {self.q_table.shape}")
-
             self.rob.set_phone_tilt(np.pi / 6, 100)
 
             total_prey_reward = 0
@@ -87,7 +84,8 @@ class Environment:
                 best_action = self.determine_action(curr_state)
 
                 # Given our selected action (whether best or random), perform this action and update the Q-table.
-                total_predator_reward += self.update_q_table(best_action, curr_state)
+                total_predator_reward += self.update_q_table(i, best_action, curr_state)
+
                 total_prey_reward += self.prey_controller.get_reward()
 
                 # self.stats.add_reward(i, self.iteration_counter, reward)  # Add the reward for visualization purposes.
@@ -96,6 +94,7 @@ class Environment:
             # self.stats.add_step_counter(i, self.iteration_counter)
             if self.physical_collision_counter > 0:
                 self.stats.catched(i, self.iteration_counter)
+
             self.stats.add_rewards(i, total_predator_reward, total_prey_reward)
 
             self.iteration_counter = 0
@@ -154,7 +153,7 @@ class Environment:
     def initialize_q_table_prey(self):
         # Initialize Q-table for states * action pairs with default values (0).
         # E.g. the size (5, 5, 5, 5, 5) denotes each sensor, with its amount of possible states (see func handle_state).
-        return np.random.uniform(low=6, high=6, size=([3, 3, 3, 3, 3, 3, 3, 3] + [len(self.action_space)]))
+        return np.random.uniform(low=6, high=6, size=([3, 3, 3, 3, 3, 3, 3, 3] + [len(self.action_space_prey)]))
 
     def handle_state(self):
         contours_left, contours_center, contours_right = self.determine_food()
@@ -203,9 +202,9 @@ class Environment:
         contours_center, _ = cv2.findContours(mask_center, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         contours_right, _ = cv2.findContours(mask_right, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
-        return len(contours_right), len(contours_center), len(contours_right)
+        return len(contours_left), len(contours_center), len(contours_right)
 
-    def handle_action(self, action, curr_state):
+    def handle_action(self, i, action, curr_state):
         # This function should accept an action (0, 1, 2...) and move the robot accordingly (left, right, forward).
         # It returns two things: new_state, which is the state (in tuple format) after this action has been performed.
         # and reward, which is the reward from this action.
@@ -226,6 +225,9 @@ class Environment:
         else:
             left, right, duration = Direction.RRIGHT
 
+        if i < 10:
+            left, right, duration = 0, 0, 300
+
         self.rob.move(left, right, duration)
 
         reward = self.determine_reward(action, curr_state)
@@ -239,19 +241,20 @@ class Environment:
             reward += 100
 
         if curr_state[1] > 0 and action == 2:
-            reward += 2
+            reward += 5
 
-        # if curr_state[0] == 0 and curr_state[1] == 0 and curr_state[2] == 0:
-        #     if action == 4:
-        #         reward += 1
-
+        if curr_state[0] == 0 and curr_state[1] == 0 and curr_state[2] == 0:  # We see nothing, turn
+            if action in [0, 1, 2, 3]:  # If we do anything except for a hard turn, punish
+                reward -= 2
+            elif action in [4]:  # We reward a hard turn if we see nothing
+                reward += 5
 
         return reward
 
-    def update_q_table(self, best_action, curr_state):
+    def update_q_table(self, i, best_action, curr_state):
         # This function updates the Q-table accordingly to the current state of rob.
         # First, we determine the new state we end in if we would play our current best action, given our current state.
-        new_state, reward = self.handle_action(best_action, curr_state)
+        new_state, reward = self.handle_action(i, best_action, curr_state)
 
         # Then we calculate the reward we would get in this new state.
         max_future_q = np.amax(self.q_table[new_state])
