@@ -56,8 +56,8 @@ class StatisticsTask3():
         self.catch_score = catch_score
 
     def plot_rewards(self):
-        plt.plot(self.reward_prey / self.steps, label="prey")
-        plt.plot(self.reward_predator/ self.steps, label="predator")
+        plt.plot(self.reward_prey, label="prey")
+        plt.plot(self.reward_predator, label="predator")
         # plt.xlabel(x_label)
         # plt.title(title)
         plt.legend()
@@ -81,7 +81,7 @@ class StatisticsTask3():
         ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
 
         ax2.set_ylabel(y_label2)  # we already handled the x-label with ax1
-        lns3 = ax2.plot(self.catch_score, color='tab:green', label="catched (right)")
+        lns3 = ax2.plot(self.catch_score, color='tab:green', label="catched (right)", alpha=0.7)
         ax2.tick_params(axis='y')
 
         lns = lns1 + lns2 + lns3

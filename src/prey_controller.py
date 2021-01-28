@@ -103,16 +103,20 @@ class Prey(StoppableThread):
         new_state, reward = self.handle_action(best_action)
 
         # Then we calculate the reward we would get in this new state.
-        max_future_q = np.amax(self.q_table[new_state])
+        # max_future_q = np.amax(self.q_table[new_state])
+        future_action_q = self.q_table[new_state][self.determine_action(new_state)]
 
         # Check what Q-value our current action has.
         current_q = self.q_table[curr_state][best_action]
 
         # Calculate the new Q-value with the common formula
-        new_q = (1 - self.LEARNING_RATE) * current_q + self.LEARNING_RATE * (reward + self.DISCOUNT_FACTOR * max_future_q)
+        # new_q = (1 - self.LEARNING_RATE) * current_q + self.LEARNING_RATE * (reward + self.DISCOUNT_FACTOR * max_future_q)
+        new_q = current_q + self.LEARNING_RATE * (reward + self.DISCOUNT_FACTOR * future_action_q - current_q)
 
+        # print(f"old q: {self.q_table[curr_state]}")
         # And lastly, update the value in the Q-table.
         self.q_table[curr_state][best_action] = new_q
+        # print(f"new q: {self.q_table[curr_state]}")
 
         return reward
 

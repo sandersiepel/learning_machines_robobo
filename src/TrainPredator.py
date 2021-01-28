@@ -39,7 +39,7 @@ class Direction:
 class Environment:
     # All of our constants that together define a training set-up.
     MAX_ITERATIONS = 50  # Amount of simulations until termination.
-    MAX_SIMULATION_ITERATIONS = 250  # Amount of actions within one simulation. Actions = Q-table updates.
+    MAX_SIMULATION_ITERATIONS = 200  # Amount of actions within one simulation. Actions = Q-table updates.
 
     LEARNING_RATE = .1
     DISCOUNT_FACTOR = .9
@@ -225,7 +225,7 @@ class Environment:
         else:
             left, right, duration = Direction.RRIGHT
 
-        if i < 10:
+        if i < 0:
             left, right, duration = 0, 0, 300
 
         self.rob.move(left, right, duration)
@@ -255,7 +255,7 @@ class Environment:
         # This function updates the Q-table accordingly to the current state of rob.
         # First, we determine the new state we end in if we would play our current best action, given our current state.
         new_state, reward = self.handle_action(i, best_action, curr_state)
-        print(f"Q-table old: {self.q_table[curr_state]}")
+        # print(f"Q-table old: {self.q_table[curr_state]}")
 
         # Then we calculate the reward we would get in this new state.
         max_future_q = np.amax(self.q_table[new_state])
@@ -271,7 +271,7 @@ class Environment:
         if i >= 10:
             self.q_table[curr_state][best_action] = new_q
 
-        print(f"Q-table new: {self.q_table[curr_state]}")
+        # print(f"Q-table new: {self.q_table[curr_state]}")
 
         return reward
 
