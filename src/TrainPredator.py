@@ -24,7 +24,7 @@ N_RUNS = 5  # How many times an experiment is done if MULTIPLE_RUNS = True.
 EXPERIMENT_COUNTER = 0  # Only needed for training over multiple experiments (MULTIPLE_RUNS = "True")
 
 # For each time training, give this a unique name so the data can be saved with a unique name.
-EXPERIMENT_NAME = 'test'
+EXPERIMENT_NAME = 'videodemo3'
 
 
 class Direction:
